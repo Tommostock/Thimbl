@@ -1,0 +1,156 @@
+/*
+ * globals.css — Global styles for Clavis
+ *
+ * This file sets up the base visual foundation:
+ * - Tailwind CSS directives (required for Tailwind to work)
+ * - CSS custom properties (design tokens / variables)
+ * - Base element resets
+ * - Custom utility classes
+ * - Scrollbar styling for the dark theme
+ */
+
+/* ── Tailwind CSS core directives ──────────────────────── */
+/* These three lines activate all of Tailwind's features. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design tokens (CSS variables) ─────────────────────── */
+:root {
+  /* Backgrounds */
+  --bg-base:    #0a0a0f;
+  --bg-surface: #111118;
+  --bg-raised:  #1a1a25;
+  --bg-border:  #2a2a3a;
+
+  /* Brand colours */
+  --cyan:      #00F5FF;
+  --cyan-glow: #00F5FF40;
+  --green:     #00FF88;
+  --red:       #FF4466;
+  --orange:    #FF8C42;
+  --yellow:    #FFD700;
+
+  /* Text */
+  --text-primary:   #E8E8F0;
+  --text-secondary: #7878A0;
+  --text-dim:       #4a4a6a;
+}
+
+/* ── Base reset ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Prevent layout shift from scrollbar appearing */
+  overflow-y: scroll;
+  /* Smooth scrolling for anchor links */
+  scroll-behavior: smooth;
+  /* Set background before JS hydrates — prevents white flash */
+  background-color: var(--bg-base);
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  /* Use system monospace fonts with custom fallbacks */
+  font-family: 'Geist Mono', 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  /* Mobile: prevent text size inflation when rotating screen */
+  -webkit-text-size-adjust: 100%;
+  /* Smooth font rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Custom scrollbar (for desktop browsers) ────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--bg-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ── Tailwind component classes ─────────────────────────── */
+/* These reusable classes use @apply to compose Tailwind utilities. */
+@layer components {
+
+  /* Glass morphism card — the main card style throughout the app */
+  .glass-card {
+    @apply rounded-2xl border;
+    background: rgba(17, 17, 24, 0.8);
+    border-color: rgba(42, 42, 58, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Cyan glow border — used on focused inputs and highlighted cards */
+  .glow-border {
+    border-color: rgba(0, 245, 255, 0.4) !important;
+    box-shadow: 0 0 0 1px rgba(0, 245, 255, 0.2),
+                0 0 20px rgba(0, 245, 255, 0.1);
+  }
+
+  /* Terminal text style — monospace, dim green, used in attack panels */
+  .terminal-text {
+    @apply font-mono text-sm;
+    color: #00dd99;
+  }
+
+  /* Status badge for CRACKED / RESISTANT results */
+  .badge-cracked {
+    @apply text-xs font-bold px-3 py-1 rounded-full;
+    background: rgba(255, 68, 102, 0.2);
+    color: #FF4466;
+    border: 1px solid rgba(255, 68, 102, 0.4);
+  }
+  .badge-resistant {
+    @apply text-xs font-bold px-3 py-1 rounded-full;
+    background: rgba(0, 255, 136, 0.15);
+    color: #00FF88;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+  }
+  .badge-running {
+    @apply text-xs font-bold px-3 py-1 rounded-full;
+    background: rgba(0, 245, 255, 0.1);
+    color: #00F5FF;
+    border: 1px solid rgba(0, 245, 255, 0.3);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+}
+
+/* ── Custom animations ──────────────────────────────────── */
+@layer utilities {
+
+  /* Blinking cursor effect for the terminal panels */
+  .cursor-blink::after {
+    content: '█';
+    animation: blink 1s step-end infinite;
+    color: #00F5FF;
+    margin-left: 2px;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+
+  /* Subtle animated gradient background */
+  .animated-bg {
+    background: radial-gradient(ellipse at 20% 50%, rgba(0, 245, 255, 0.05) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(0, 255, 136, 0.03) 0%, transparent 60%),
+                var(--bg-base);
+  }
+
+  /* Strength bar transitions */
+  .strength-bar-fill {
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 0.4s ease;
+  }
+
+  /* Safe area padding for iOS (notch, home indicator) */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
