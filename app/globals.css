@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+/* ============================================
+   Thimbl — Colour Tokens & Theme System
+
+   Light theme: warm creams, terracotta, sage green
+   Dark theme: rich charcoal, warm greys (not pure black)
+   ============================================ */
+
+/* Tailwind v4 theme configuration */
+@theme {
+  /* Craft-inspired colour palette */
+  --color-cream: #FDF8F0;
+  --color-cream-dark: #F5EDE0;
+  --color-parchment: #EDE4D3;
+  --color-terracotta: #C67B5C;
+  --color-terracotta-light: #D99A80;
+  --color-terracotta-dark: #A85D3F;
+  --color-sage: #8BA888;
+  --color-sage-light: #A8C4A5;
+  --color-sage-dark: #6E8B6B;
+  --color-dusty-rose: #D4A0A0;
+  --color-dusty-rose-light: #E4BFBF;
+  --color-dusty-rose-dark: #B87E7E;
+  --color-golden: #D4A843;
+  --color-golden-light: #E4C470;
+  --color-golden-dark: #B08A2E;
+
+  /* Warm neutrals */
+  --color-charcoal: #2C2825;
+  --color-warm-grey: #3D3835;
+  --color-warm-grey-light: #5C5550;
+  --color-warm-grey-lighter: #7A726C;
+  --color-stone: #A39A92;
+  --color-linen: #C8BFB4;
+
+  /* Font families */
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
+
+  /* Animations */
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-slide-up: slide-up 0.4s ease-out;
+  --animate-bounce-in: bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --animate-confetti: confetti 0.8s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounce-in {
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes confetti {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+}
+
+/* ============================================
+   CSS Custom Properties for Light/Dark Themes
+   ============================================ */
+
+:root {
+  /* Light theme (default) */
+  --bg-primary: #FDF8F0;
+  --bg-secondary: #F5EDE0;
+  --bg-card: #FFFFFF;
+  --bg-nav: #FFFFFF;
+  --text-primary: #2C2825;
+  --text-secondary: #5C5550;
+  --text-muted: #7A726C;
+  --border-colour: #EDE4D3;
+  --border-colour-light: #F5EDE0;
+  --accent-primary: #C67B5C;
+  --accent-secondary: #8BA888;
+  --accent-tertiary: #D4A0A0;
+  --shadow-colour: rgba(44, 40, 37, 0.08);
+  --shadow-colour-lg: rgba(44, 40, 37, 0.12);
+}
+
+[data-theme="dark"] {
+  /* Dark theme — warm charcoal, NOT pure black */
+  --bg-primary: #2C2825;
+  --bg-secondary: #3D3835;
+  --bg-card: #3D3835;
+  --bg-nav: #342F2C;
+  --text-primary: #F5EDE0;
+  --text-secondary: #C8BFB4;
+  --text-muted: #A39A92;
+  --border-colour: #5C5550;
+  --border-colour-light: #4A4440;
+  --accent-primary: #D99A80;
+  --accent-secondary: #A8C4A5;
+  --accent-tertiary: #E4BFBF;
+  --shadow-colour: rgba(0, 0, 0, 0.2);
+  --shadow-colour-lg: rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent overscroll bounce on iOS */
+body {
+  overscroll-behavior: none;
+}
+
+/* Add bottom padding for the fixed bottom navigation bar */
+main {
+  padding-bottom: 5rem;
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+/* Card styling with theme-aware colours */
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-colour-light);
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px var(--shadow-colour);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 16px var(--shadow-colour-lg);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-colour);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
