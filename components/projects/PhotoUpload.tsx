@@ -1,66 +1,55 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Camera, Loader2, X } from 'lucide-react';
-import { uploadPhoto } from '@/lib/supabase/storage';
-import { createClient } from '@/lib/supabase/client';
+import { Camera, Loader2 } from 'lucide-react';
+import { savePhoto, generateId } from '@/lib/storage';
 
 /**
  * PhotoUpload Component
  *
- * Lets users upload photos to their project.
- * Compresses images client-side before uploading to Supabase Storage.
+ * Lets users add photos to their project.
+ * Compresses images and stores them as base64 data URLs in localStorage.
+ * No backend required.
  */
 
 interface PhotoUploadProps {
   userProjectId: string;
-  userId: string;
-  onPhotoUploaded: (url: string) => void;
+  onPhotoUploaded: (photoId: string) => void;
 }
 
-export default function PhotoUpload({ userProjectId, userId, onPhotoUploaded }: PhotoUploadProps) {
+export default function PhotoUpload({ userProjectId, onPhotoUploaded }: PhotoUploadProps) {
   const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Show preview
-    const reader = new FileReader();
-    reader.onload = () => setPreview(reader.result as string);
-    reader.readAsDataURL(file);
-
-    // Upload
     setUploading(true);
     try {
-      const url = await uploadPhoto(file, userId, userProjectId);
-      if (url) {
-        // Save to user_photos table
-        const supabase = createClient();
-        await supabase.from('user_photos').insert({
-          user_id: userId,
-          user_project_id: userProjectId,
-          photo_url: url,
-          caption: '',
-        });
+      // Compress and convert to data URL
+      const dataUrl = await compressToDataUrl(file, 800, 0.75);
+      const photoId = generateId();
 
-        onPhotoUploaded(url);
-      }
+      savePhoto({
+        id: photoId,
+        user_project_id: userProjectId,
+        photo_url: dataUrl,
+        caption: '',
+        uploaded_at: new Date().toISOString(),
+      });
+
+      onPhotoUploaded(photoId);
     } catch (err) {
-      console.error('Photo upload failed:', err);
+      console.error('Photo processing failed:', err);
     } finally {
       setUploading(false);
-      setPreview(null);
-      // Reset the input so the same file can be selected again
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   return (
     <div>
-      {/* Upload button */}
       <button
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
@@ -74,7 +63,7 @@ export default function PhotoUpload({ userProjectId, userId, onPhotoUploaded }: 
         {uploading ? (
           <>
             <Loader2 size={18} className="animate-spin" />
-            Uploading...
+            Processing...
           </>
         ) : (
           <>
@@ -84,7 +73,6 @@ export default function PhotoUpload({ userProjectId, userId, onPhotoUploaded }: 
         )}
       </button>
 
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -93,24 +81,31 @@ export default function PhotoUpload({ userProjectId, userId, onPhotoUploaded }: 
         onChange={handleFileSelect}
         className="hidden"
       />
-
-      {/* Upload preview */}
-      {preview && (
-        <div className="mt-3 relative inline-block">
-          <img
-            src={preview}
-            alt="Upload preview"
-            className="w-20 h-20 object-cover rounded-xl opacity-50"
-          />
-          <button
-            onClick={() => setPreview(null)}
-            className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
-          >
-            <X size={12} />
-          </button>
-        </div>
-      )}
     </div>
   );
+}
+
+/**
+ * Compress an image file and return it as a base64 data URL.
+ */
+async function compressToDataUrl(file: File, maxWidth: number, quality: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
 }

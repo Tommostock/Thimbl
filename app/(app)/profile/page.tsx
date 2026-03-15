@@ -1,225 +1,190 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-  User,
-  Award,
-  Scissors,
-  Clock,
-  Camera,
-  LogOut,
-  Sun,
-  Moon,
-  Loader2,
-  ChevronRight,
-} from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { Sun, Moon, LogOut, Award, Layers } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { getStorage } from '@/lib/storage';
 import { getLevelForXP } from '@/lib/constants';
-import type { UserStats, Profile } from '@/lib/types/database';
+import type { StoredStats } from '@/lib/storage';
 
 /**
  * Profile Page
  *
- * Shows user stats, level, theme toggle, and account management.
+ * Shows the user's name, level, stats, and settings.
+ * All data sourced from localStorage.
  */
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, signOut } = useAuth();
+  const [stats, setStats] = useState<StoredStats | null>(null);
+  const [projectCounts, setProjectCounts] = useState({ total: 0, completed: 0 });
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      const supabase = createClient();
+    const { userStats, userProjects } = getStorage();
+    setStats(userStats);
+    setProjectCounts({
+      total: userProjects.length,
+      completed: userProjects.filter((p) => p.status === 'completed').length,
+    });
+  }, []);
 
-      const [{ data: statsData }, { data: profileData }] = await Promise.all([
-        supabase.from('user_stats').select('*').eq('user_id', user.id).single(),
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-      ]);
-
-      setStats(statsData as UserStats | null);
-      setProfile(profileData as Profile | null);
-      setLoading(false);
-    };
-
-    fetchData();
-  }, [user]);
-
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/login');
-    router.refresh();
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 size={32} className="animate-spin" style={{ color: 'var(--accent-primary)' }} />
-      </div>
-    );
-  }
-
-  const displayName = profile?.display_name || user?.user_metadata?.display_name || 'Crafter';
-  const xp = stats?.total_xp ?? 0;
-  const level = getLevelForXP(xp);
+  const totalXP = stats?.total_xp ?? 0;
+  const level = getLevelForXP(totalXP);
+  const nextLevel = level.nextLevel;
+  const progressXP = totalXP - level.minXP;
+  const neededXP = nextLevel ? nextLevel.minXP - level.minXP : 1;
+  const progress = nextLevel ? Math.min((progressXP / neededXP) * 100, 100) : 100;
 
   return (
     <div className="px-4 pt-6 pb-4">
-      {/* Profile header */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+        <h1
+          className="text-2xl font-bold mb-5"
+          style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
+        >
+          Profile
+        </h1>
+      </motion.div>
+
+      {/* Avatar + name */}
       <motion.div
-        className="text-center mb-6"
-        initial={{ opacity: 0, y: -10 }}
+        className="card p-5 mb-4 flex items-center gap-4"
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <div
-          className="w-20 h-20 mx-auto mb-3 rounded-full flex items-center justify-center"
+          className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0"
           style={{ backgroundColor: 'var(--accent-primary)' }}
         >
-          <User size={36} className="text-white" />
+          🧵
         </div>
-        <h1
-          className="text-2xl font-bold"
-          style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
-        >
-          {displayName}
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--accent-primary)' }}>
-          Level {level.index + 1} — {level.name}
-        </p>
+        <div>
+          <h2 className="text-xl font-bold" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}>
+            {user?.display_name ?? 'Crafter'}
+          </h2>
+          <span
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full mt-1"
+            style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
+          >
+            <Award size={12} />
+            {level.name}
+          </span>
+        </div>
       </motion.div>
 
-      {/* XP progress */}
+      {/* XP bar */}
+      {stats && (
+        <motion.div
+          className="card p-4 mb-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              {level.name}
+              {nextLevel && (
+                <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
+                  → {nextLevel.name}
+                </span>
+              )}
+            </span>
+            <span className="text-sm font-bold" style={{ color: 'var(--accent-primary)' }}>
+              {totalXP} XP
+            </span>
+          </div>
+          <div className="h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: 'var(--accent-primary)' }}
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+            />
+          </div>
+          {nextLevel && (
+            <p className="text-xs mt-1.5 text-right" style={{ color: 'var(--text-muted)' }}>
+              {nextLevel.minXP - totalXP} XP to {nextLevel.name}
+            </p>
+          )}
+        </motion.div>
+      )}
+
+      {/* Stats */}
       <motion.div
-        className="card p-4 mb-4"
+        className="grid grid-cols-3 gap-3 mb-4"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            {xp} XP
-          </span>
-          {level.nextLevel && (
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {level.nextLevel.minXP - xp} XP to {level.nextLevel.name}
-            </span>
-          )}
-        </div>
-        <div
-          className="h-3 rounded-full overflow-hidden"
-          style={{ backgroundColor: 'var(--bg-secondary)' }}
-        >
-          <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: level.nextLevel
-                ? `${((xp - level.minXP) / (level.nextLevel.minXP - level.minXP)) * 100}%`
-                : '100%',
-              backgroundColor: 'var(--accent-primary)',
-            }}
-          />
-        </div>
-      </motion.div>
-
-      {/* Stats grid */}
-      <motion.div
-        className="grid grid-cols-2 gap-3 mb-6"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
         {[
-          { icon: Scissors, label: 'Projects', value: `${stats?.level ?? 0}` },
-          { icon: Award, label: 'Streak', value: `${stats?.current_streak ?? 0} days` },
-          { icon: Clock, label: 'Total XP', value: `${xp}` },
-          { icon: Camera, label: 'Level', value: level.name },
+          { label: 'Projects', value: projectCounts.total },
+          { label: 'Completed', value: projectCounts.completed },
+          { label: 'Streak', value: `${stats?.current_streak ?? 0}d` },
         ].map((stat) => (
-          <div key={stat.label} className="card p-3 flex items-center gap-3">
-            <stat.icon size={20} style={{ color: 'var(--accent-primary)' }} />
-            <div>
-              <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                {stat.value}
-              </p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
-            </div>
+          <div key={stat.label} className="card p-3 text-center">
+            <p className="text-xl font-bold" style={{ color: 'var(--accent-primary)' }}>
+              {stat.value}
+            </p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {stat.label}
+            </p>
           </div>
         ))}
       </motion.div>
 
       {/* Settings */}
       <motion.div
+        className="card divide-y"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.15 }}
+        style={{ borderColor: 'var(--border-colour-light)' }}
       >
-        <h2
-          className="text-base font-bold mb-3"
-          style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center justify-between p-4 min-h-[52px]"
         >
-          Settings
-        </h2>
-
-        <div className="card divide-y" style={{ borderColor: 'var(--border-colour-light)' }}>
-          {/* Theme toggle */}
-          <button
-            onClick={toggleTheme}
-            className="w-full flex items-center justify-between p-4 min-h-[44px]"
-          >
-            <div className="flex items-center gap-3">
-              {theme === 'light' ? (
-                <Moon size={20} style={{ color: 'var(--text-secondary)' }} />
-              ) : (
-                <Sun size={20} style={{ color: 'var(--text-secondary)' }} />
-              )}
-              <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-              </span>
-            </div>
-            <ChevronRight size={18} style={{ color: 'var(--text-muted)' }} />
-          </button>
-
-          {/* Achievements link */}
-          <button
-            onClick={() => router.push('/achievements')}
-            className="w-full flex items-center justify-between p-4 min-h-[44px]"
-          >
-            <div className="flex items-center gap-3">
-              <Award size={20} style={{ color: 'var(--text-secondary)' }} />
-              <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                Achievements
-              </span>
-            </div>
-            <ChevronRight size={18} style={{ color: 'var(--text-muted)' }} />
-          </button>
-
-          {/* Sign out */}
-          <button
-            onClick={handleSignOut}
-            className="w-full flex items-center gap-3 p-4 min-h-[44px]"
-          >
-            <LogOut size={20} style={{ color: '#C0392B' }} />
-            <span className="text-sm" style={{ color: '#C0392B' }}>
-              Sign Out
+          <div className="flex items-center gap-3">
+            {theme === 'dark' ? (
+              <Sun size={20} style={{ color: 'var(--accent-primary)' }} />
+            ) : (
+              <Moon size={20} style={{ color: 'var(--accent-primary)' }} />
+            )}
+            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              {theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             </span>
-          </button>
-        </div>
-      </motion.div>
+          </div>
+        </button>
 
-      {/* Email */}
-      <p className="text-center text-xs mt-6" style={{ color: 'var(--text-muted)' }}>
-        {user?.email}
-      </p>
+        {/* Achievements link */}
+        <a
+          href="/achievements"
+          className="w-full flex items-center justify-between p-4 min-h-[52px]"
+        >
+          <div className="flex items-center gap-3">
+            <Layers size={20} style={{ color: 'var(--accent-primary)' }} />
+            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              View Achievements
+            </span>
+          </div>
+        </a>
+
+        {/* Sign out / reset */}
+        <button
+          onClick={signOut}
+          className="w-full flex items-center gap-3 p-4 min-h-[52px]"
+        >
+          <LogOut size={20} style={{ color: 'var(--text-muted)' }} />
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Reset & Start Over
+          </span>
+        </button>
+      </motion.div>
     </div>
   );
 }

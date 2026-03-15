@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect, useCallback } from 'react';
+import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -16,37 +16,30 @@ import {
   Plus,
   Award,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUserProjects } from '@/hooks/useProjects';
 import { useXP } from '@/hooks/useXP';
 import { useAchievements } from '@/hooks/useAchievements';
+import { getPhotosForProject, deletePhoto } from '@/lib/storage';
 import PhotoUpload from '@/components/projects/PhotoUpload';
 import PhotoGallery from '@/components/projects/PhotoGallery';
-import type { UserProject, Project, StepItem } from '@/lib/types/database';
+import type { StepItem } from '@/lib/types/database';
+import type { StoredPhoto } from '@/lib/storage';
 
 /**
  * Active Project Detail Page
  *
  * Shows step-by-step checklist, progress bar, time logging, notes, photos,
- * and XP integration. This is the main "crafting in progress" view.
+ * and XP integration. All data sourced from localStorage.
  */
-
-interface Photo {
-  id: string;
-  photo_url: string;
-  caption?: string;
-}
 
 export default function ActiveProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { user } = useAuth();
-  const { award } = useXP();
+  const { userProjects, updateStep, completeProject, logHours, updateNotes } = useUserProjects();
+  const { award, awardCustom } = useXP();
   const { checkAchievements } = useAchievements();
-  const [userProject, setUserProject] = useState<UserProject | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const [photos, setPhotos] = useState<StoredPhoto[]>([]);
   const [hoursInput, setHoursInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
   const [showComplete, setShowComplete] = useState(false);
@@ -55,171 +48,90 @@ export default function ActiveProjectPage({ params }: { params: Promise<{ id: st
   const [saving, setSaving] = useState(false);
   const [celebration, setCelebration] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    const supabase = createClient();
-    const { data: up } = await supabase
-      .from('user_projects')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (up) {
-      setUserProject(up as UserProject);
-      setNotesInput(up.notes || '');
-
-      const [{ data: proj }, { data: photoData }] = await Promise.all([
-        supabase.from('projects').select('*').eq('id', up.project_id).single(),
-        supabase
-          .from('user_photos')
-          .select('id, photo_url, caption')
-          .eq('user_project_id', id)
-          .order('created_at', { ascending: false }),
-      ]);
-
-      if (proj) setProject(proj as Project);
-      setPhotos((photoData as Photo[]) ?? []);
-    }
-    setLoading(false);
-  }, [id]);
+  const userProject = userProjects.find((up) => up.id === id) ?? null;
+  const project = userProject?.project ?? null;
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (userProject) {
+      setNotesInput(userProject.notes || '');
+    }
+    setPhotos(getPhotosForProject(id));
+  }, [id, userProject?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const steps = (project?.steps ?? []) as StepItem[];
   const totalSteps = steps.length;
   const currentStep = userProject?.current_step ?? 0;
   const progress = totalSteps > 0 ? Math.round((currentStep / totalSteps) * 100) : 0;
 
-  // Show a brief celebration toast
-  const showCelebration = (message: string) => {
+  const showCelebrationToast = (message: string) => {
     setCelebration(message);
     setTimeout(() => setCelebration(null), 3000);
   };
 
-  // Toggle a step as complete/incomplete
-  const toggleStep = async (stepIndex: number) => {
+  const toggleStep = (stepIndex: number) => {
     if (!userProject) return;
-    const supabase = createClient();
     const newStep = stepIndex + 1 > currentStep ? stepIndex + 1 : stepIndex;
     const isAdvancing = newStep > currentStep;
 
-    await supabase
-      .from('user_projects')
-      .update({ current_step: newStep })
-      .eq('id', userProject.id);
+    updateStep(id, newStep);
 
-    setUserProject({ ...userProject, current_step: newStep });
-
-    // Award XP for completing a step (only when advancing)
     if (isAdvancing) {
-      const xp = await award('COMPLETE_STEP');
-      if (xp) showCelebration('+5 XP — Step complete!');
+      const xp = award('COMPLETE_STEP');
+      if (xp) showCelebrationToast('+5 XP — Step complete!');
       checkAchievements();
     }
   };
 
-  // Log hours
-  const handleLogHours = async () => {
+  const handleLogHours = () => {
     if (!userProject || !hoursInput) return;
     const hours = parseFloat(hoursInput);
     if (isNaN(hours) || hours <= 0) return;
 
-    const supabase = createClient();
-    const newTotal = (userProject.hours_logged || 0) + hours;
-
-    await supabase
-      .from('user_projects')
-      .update({ hours_logged: newTotal })
-      .eq('id', userProject.id);
-
-    setUserProject({ ...userProject, hours_logged: newTotal });
+    logHours(id, hours);
     setHoursInput('');
 
-    // Award XP for logging time (5 per hour)
     const xpAmount = Math.round(hours * 5);
-    if (xpAmount > 0 && user) {
-      const { awardXP: awardXPDirect } = await import('@/lib/xp');
-      await awardXPDirect(user.id, xpAmount);
-      showCelebration(`+${xpAmount} XP — Time logged!`);
+    if (xpAmount > 0) {
+      awardCustom(xpAmount);
+      showCelebrationToast(`+${xpAmount} XP — Time logged!`);
       checkAchievements();
     }
   };
 
-  // Save notes
-  const handleSaveNotes = async () => {
+  const handleSaveNotes = () => {
     if (!userProject) return;
-    const supabase = createClient();
-    await supabase
-      .from('user_projects')
-      .update({ notes: notesInput })
-      .eq('id', userProject.id);
-    setUserProject({ ...userProject, notes: notesInput });
+    updateNotes(id, notesInput);
   };
 
-  // Photo uploaded callback
-  const handlePhotoUploaded = async (url: string) => {
-    // Refetch photos to get the new one with its ID
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('user_photos')
-      .select('id, photo_url, caption')
-      .eq('user_project_id', id)
-      .order('created_at', { ascending: false });
-
-    setPhotos((data as Photo[]) ?? []);
-
-    // Award XP for uploading a photo
-    const xp = await award('UPLOAD_PHOTO');
-    if (xp) showCelebration('+10 XP — Photo added!');
+  const handlePhotoUploaded = (photoId: string) => {
+    setPhotos(getPhotosForProject(id));
+    const xp = award('UPLOAD_PHOTO');
+    if (xp) showCelebrationToast('+10 XP — Photo added!');
     checkAchievements();
   };
 
-  // Photo deleted callback
   const handlePhotoDeleted = (photoId: string) => {
+    deletePhoto(photoId);
     setPhotos((prev) => prev.filter((p) => p.id !== photoId));
   };
 
-  // Complete project
-  const handleComplete = async () => {
+  const handleComplete = () => {
     if (!userProject || rating === 0) return;
     setSaving(true);
-    const supabase = createClient();
 
-    await supabase
-      .from('user_projects')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        current_step: totalSteps,
-        rating,
-        review,
-      })
-      .eq('id', userProject.id);
+    completeProject(id, rating, review);
+    award('COMPLETE_PROJECT');
+    award('RATE_PROJECT');
 
-    // Award XP for completing project + rating
-    await award('COMPLETE_PROJECT');
-    await award('RATE_PROJECT');
-
-    // Check for new achievements
-    const newAchievements = await checkAchievements();
+    const newAchievements = checkAchievements();
     if (newAchievements.length > 0) {
-      showCelebration(`Achievement unlocked: ${newAchievements[0].name}!`);
-      // Small delay so the user sees the celebration
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      showCelebrationToast(`Achievement unlocked: ${newAchievements[0].name}!`);
+      setTimeout(() => router.push('/my-projects'), 2000);
+    } else {
+      router.push('/my-projects');
     }
-
     setSaving(false);
-    router.push('/my-projects');
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 size={32} className="animate-spin" style={{ color: 'var(--accent-primary)' }} />
-      </div>
-    );
-  }
 
   if (!userProject || !project) {
     return (
@@ -380,10 +292,9 @@ export default function ActiveProjectPage({ params }: { params: Promise<{ id: st
           </div>
         )}
 
-        {user && userProject.status === 'in_progress' && (
+        {userProject.status === 'in_progress' && (
           <PhotoUpload
             userProjectId={id}
-            userId={user.id}
             onPhotoUploaded={handlePhotoUploaded}
           />
         )}

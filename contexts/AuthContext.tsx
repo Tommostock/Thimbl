@@ -1,79 +1,73 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import type { User, Session } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
+import { getStorage, clearStorage, hasProfile } from '@/lib/storage';
 
 /**
  * Auth Context
  *
- * Provides the current user and session to the entire app.
- * Listens for auth state changes (login, logout, token refresh).
+ * No Supabase auth — user identity is stored in localStorage.
+ * "Logged in" means onboarding has been completed (display_name is set).
+ * "Sign out" clears localStorage and redirects to /onboarding.
  */
 
-interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  loading: boolean;
-  signOut: () => Promise<void>;
+interface LocalUser {
+  id: 'local';
+  display_name: string;
+  favourite_category: string;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+interface AuthContextType {
+  user: LocalUser | null;
+  loading: boolean;
+  signOut: () => void;
+  refreshUser: () => void;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  signOut: () => {},
+  refreshUser: () => {},
+});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<LocalUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  const loadUser = () => {
+    const { profile } = getStorage();
+    if (profile.display_name) {
+      setUser({ id: 'local', display_name: profile.display_name, favourite_category: profile.favourite_category });
+    } else {
+      setUser(null);
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    // Skip if Supabase env vars aren't configured (e.g. during build)
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      setLoading(false);
-      return;
-    }
-
-    const supabase = createClient();
-
-    // Get the initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes (login, logout, token refresh)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Clean up the subscription when the component unmounts
-    return () => subscription.unsubscribe();
+    loadUser();
   }, []);
 
-  const signOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+  const signOut = () => {
+    clearStorage();
+    setUser(null);
+    router.push('/onboarding');
+  };
+
+  const refreshUser = () => {
+    loadUser();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-/**
- * Hook to access auth state.
- * Must be used within an AuthProvider.
- */
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext);
 }

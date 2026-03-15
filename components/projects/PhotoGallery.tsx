@@ -3,14 +3,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { deletePhoto } from '@/lib/supabase/storage';
-import { createClient } from '@/lib/supabase/client';
 
 /**
  * PhotoGallery Component
  *
  * Displays a grid of project photos with a lightbox viewer.
- * Users can tap to enlarge and delete their photos.
+ * Photos are base64 data URLs stored in localStorage.
  */
 
 interface Photo {
@@ -26,30 +24,14 @@ interface PhotoGalleryProps {
 
 export default function PhotoGallery({ photos, onPhotoDeleted }: PhotoGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   if (photos.length === 0) return null;
 
-  const handleDelete = async () => {
-    if (selectedIndex === null || deleting) return;
+  const handleDelete = () => {
+    if (selectedIndex === null) return;
     const photo = photos[selectedIndex];
-
-    setDeleting(true);
-    try {
-      // Delete from storage
-      await deletePhoto(photo.photo_url);
-
-      // Delete from database
-      const supabase = createClient();
-      await supabase.from('user_photos').delete().eq('id', photo.id);
-
-      onPhotoDeleted(photo.id);
-      setSelectedIndex(null);
-    } catch (err) {
-      console.error('Failed to delete photo:', err);
-    } finally {
-      setDeleting(false);
-    }
+    onPhotoDeleted(photo.id);
+    setSelectedIndex(null);
   };
 
   const goNext = () => {
@@ -110,7 +92,6 @@ export default function PhotoGallery({ photos, onPhotoDeleted }: PhotoGalleryPro
                 e.stopPropagation();
                 handleDelete();
               }}
-              disabled={deleting}
               className="absolute top-4 left-4 w-10 h-10 rounded-full flex items-center justify-center min-h-[44px] min-w-[44px]"
               style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
             >

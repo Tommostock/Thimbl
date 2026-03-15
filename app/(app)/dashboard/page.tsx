@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { userProjects } = useUserProjects();
 
-  const displayName = user?.user_metadata?.display_name || 'Crafter';
+  const displayName = user?.display_name || 'Crafter';
   const inProgress = userProjects.filter((up) => up.status === 'in_progress');
   const completed = userProjects.filter((up) => up.status === 'completed');
 

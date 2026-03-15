@@ -1,0 +1,183 @@
+/**
+ * localStorage Helpers
+ *
+ * All user data is stored locally in the browser — no backend required.
+ * Single key 'thimbl_data' stores the entire user state.
+ */
+
+import type { UserProject, ShoppingListItem } from '@/lib/types/database';
+
+export interface StoredPhoto {
+  id: string;
+  user_project_id: string;
+  photo_url: string; // data URL (base64)
+  caption: string;
+  uploaded_at: string;
+}
+
+export interface StoredStats {
+  total_xp: number;
+  level: number;
+  current_streak: number;
+  longest_streak: number;
+  last_activity_date: string | null;
+}
+
+export interface StoredProfile {
+  display_name: string;
+  favourite_category: string;
+}
+
+export interface ThimblStorage {
+  profile: StoredProfile;
+  userProjects: UserProject[];
+  shoppingList: ShoppingListItem[];
+  userStats: StoredStats;
+  unlockedAchievements: string[]; // achievement IDs
+  userPhotos: StoredPhoto[];
+}
+
+const STORAGE_KEY = 'thimbl_data';
+
+const DEFAULT_STORAGE: ThimblStorage = {
+  profile: { display_name: '', favourite_category: '' },
+  userProjects: [],
+  shoppingList: [],
+  userStats: {
+    total_xp: 0,
+    level: 1,
+    current_streak: 0,
+    longest_streak: 0,
+    last_activity_date: null,
+  },
+  unlockedAchievements: [],
+  userPhotos: [],
+};
+
+/** Load the full storage object. Returns defaults if nothing is stored. */
+export function getStorage(): ThimblStorage {
+  if (typeof window === 'undefined') return DEFAULT_STORAGE;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_STORAGE };
+    return { ...DEFAULT_STORAGE, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_STORAGE };
+  }
+}
+
+/** Save partial updates to storage. Merges with existing data. */
+export function setStorage(updates: Partial<ThimblStorage>): void {
+  if (typeof window === 'undefined') return;
+  const current = getStorage();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...updates }));
+}
+
+/** Clear all stored data (sign out / reset). */
+export function clearStorage(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+/** Check whether the user has completed onboarding. */
+export function hasProfile(): boolean {
+  return !!getStorage().profile.display_name;
+}
+
+// -------------------------------------------------------
+// User Projects
+// -------------------------------------------------------
+
+export function getUserProjects(): UserProject[] {
+  return getStorage().userProjects;
+}
+
+export function saveUserProject(project: UserProject): void {
+  const { userProjects } = getStorage();
+  const exists = userProjects.findIndex((p) => p.id === project.id);
+  if (exists >= 0) {
+    userProjects[exists] = project;
+  } else {
+    userProjects.unshift(project);
+  }
+  setStorage({ userProjects });
+}
+
+export function updateUserProject(id: string, updates: Partial<UserProject>): void {
+  const { userProjects } = getStorage();
+  const idx = userProjects.findIndex((p) => p.id === id);
+  if (idx >= 0) {
+    userProjects[idx] = { ...userProjects[idx], ...updates };
+    setStorage({ userProjects });
+  }
+}
+
+// -------------------------------------------------------
+// Shopping List
+// -------------------------------------------------------
+
+export function getShoppingList(): ShoppingListItem[] {
+  return getStorage().shoppingList;
+}
+
+export function saveShoppingItem(item: ShoppingListItem): void {
+  const { shoppingList } = getStorage();
+  shoppingList.unshift(item);
+  setStorage({ shoppingList });
+}
+
+export function updateShoppingItem(id: string, updates: Partial<ShoppingListItem>): void {
+  const { shoppingList } = getStorage();
+  const idx = shoppingList.findIndex((i) => i.id === id);
+  if (idx >= 0) {
+    shoppingList[idx] = { ...shoppingList[idx], ...updates };
+    setStorage({ shoppingList });
+  }
+}
+
+export function deleteShoppingItem(id: string): void {
+  const { shoppingList } = getStorage();
+  setStorage({ shoppingList: shoppingList.filter((i) => i.id !== id) });
+}
+
+// -------------------------------------------------------
+// Photos
+// -------------------------------------------------------
+
+export function getPhotosForProject(userProjectId: string): StoredPhoto[] {
+  return getStorage().userPhotos.filter((p) => p.user_project_id === userProjectId);
+}
+
+export function savePhoto(photo: StoredPhoto): void {
+  const { userPhotos } = getStorage();
+  userPhotos.unshift(photo);
+  setStorage({ userPhotos });
+}
+
+export function deletePhoto(id: string): void {
+  const { userPhotos } = getStorage();
+  setStorage({ userPhotos: userPhotos.filter((p) => p.id !== id) });
+}
+
+// -------------------------------------------------------
+// Achievements
+// -------------------------------------------------------
+
+export function getUnlockedAchievements(): string[] {
+  return getStorage().unlockedAchievements;
+}
+
+export function unlockAchievement(achievementId: string): void {
+  const { unlockedAchievements } = getStorage();
+  if (!unlockedAchievements.includes(achievementId)) {
+    setStorage({ unlockedAchievements: [...unlockedAchievements, achievementId] });
+  }
+}
+
+// -------------------------------------------------------
+// Simple UUID generator (no crypto dependency)
+// -------------------------------------------------------
+
+export function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}

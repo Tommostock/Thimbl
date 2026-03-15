@@ -1,35 +1,27 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { awardXP, getXPForAction } from '@/lib/xp';
 import { XP_REWARDS } from '@/lib/constants';
 
 /**
  * useXP Hook
  *
- * Provides a simple interface for awarding XP to the current user.
- * Wraps the awardXP function from lib/xp.ts with the current user context.
+ * Provides a simple interface for awarding XP.
+ * All XP data is stored in localStorage via lib/xp.ts.
  */
 export function useXP() {
-  const { user } = useAuth();
-
   const award = useCallback(
-    async (action: keyof typeof XP_REWARDS): Promise<number | null> => {
-      if (!user) return null;
+    (action: keyof typeof XP_REWARDS): number => {
       const amount = getXPForAction(action);
-      return awardXP(user.id, amount);
+      return awardXP(amount);
     },
-    [user]
+    []
   );
 
-  const awardCustom = useCallback(
-    async (amount: number): Promise<number | null> => {
-      if (!user) return null;
-      return awardXP(user.id, amount);
-    },
-    [user]
-  );
+  const awardCustom = useCallback((amount: number): number => {
+    return awardXP(amount);
+  }, []);
 
   return { award, awardCustom };
 }

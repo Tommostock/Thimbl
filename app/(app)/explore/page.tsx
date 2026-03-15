@@ -1,118 +1,88 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search } from 'lucide-react';
-import CategoryFilter from '@/components/catalogue/CategoryFilter';
-import ProjectCard from '@/components/catalogue/ProjectCard';
-import type { Project } from '@/lib/types/database';
+import { Search, Loader2 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
+import ProjectCard from '@/components/catalogue/ProjectCard';
+import CategoryFilter from '@/components/catalogue/CategoryFilter';
 
 /**
- * Explore / Catalogue Page
+ * Explore Page — Project Catalogue
  *
- * Browse all craft projects with search and category filtering.
- * Projects are fetched from Supabase (or shown from local cache).
+ * Displays the hardcoded project catalogue with search and category filtering.
  */
 
 export default function ExplorePage() {
-  const { projects, loading } = useProjects();
+  const { projects } = useProjects();
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>('all');
 
-  // Filter projects by search term and category
-  const filtered = useMemo(() => {
-    let result = projects;
-
-    if (category) {
-      result = result.filter((p) => p.category === category);
-    }
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          (p.description?.toLowerCase().includes(q) ?? false)
-      );
-    }
-
-    return result;
-  }, [projects, category, search]);
+  const filtered = projects.filter((p) => {
+    const matchesCategory = !selectedCategory || selectedCategory === 'all' || p.category === selectedCategory;
+    const matchesSearch =
+      !search ||
+      p.title.toLowerCase().includes(search.toLowerCase()) ||
+      (p.description ?? '').toLowerCase().includes(search.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div className="px-4 pt-6 pb-4">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-5"
-      >
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
         <h1
           className="text-2xl font-bold mb-1"
           style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
         >
-          Explore Projects
+          Explore
         </h1>
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Discover your next crafting adventure
+          {projects.length} projects to discover
         </p>
       </motion.div>
 
-      {/* Search bar */}
-      <div className="relative mb-4">
-        <Search
-          size={18}
-          className="absolute left-3 top-1/2 -translate-y-1/2"
-          style={{ color: 'var(--text-muted)' }}
-        />
+      {/* Search */}
+      <div
+        className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-4 border"
+        style={{
+          backgroundColor: 'var(--bg-secondary)',
+          borderColor: 'var(--border-colour)',
+        }}
+      >
+        <Search size={16} style={{ color: 'var(--text-muted)' }} />
         <input
-          type="text"
+          type="search"
           placeholder="Search projects..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 rounded-xl text-sm border outline-none"
-          style={{
-            backgroundColor: 'var(--bg-card)',
-            borderColor: 'var(--border-colour)',
-            color: 'var(--text-primary)',
-          }}
+          className="flex-1 bg-transparent text-sm outline-none"
+          style={{ color: 'var(--text-primary)' }}
         />
       </div>
 
       {/* Category filter */}
-      <div className="mb-5">
-        <CategoryFilter selected={category} onSelect={setCategory} />
+      <div className="mb-4">
+        <CategoryFilter selected={selectedCategory} onSelect={setSelectedCategory} />
       </div>
 
-      {/* Project grid */}
-      {loading ? (
-        // Loading skeleton
-        <div className="grid grid-cols-2 gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="card overflow-hidden animate-pulse">
-              <div className="h-36" style={{ backgroundColor: 'var(--bg-secondary)' }} />
-              <div className="p-3.5 space-y-2">
-                <div className="h-4 rounded" style={{ backgroundColor: 'var(--bg-secondary)', width: '80%' }} />
-                <div className="h-3 rounded" style={{ backgroundColor: 'var(--bg-secondary)', width: '50%' }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        // Empty state
+      {/* Grid */}
+      {filtered.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-lg font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-            No projects found
-          </p>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Try adjusting your search or filters
-          </p>
+          <p className="font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>No projects found</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Try a different search or category</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          {filtered.map((project: Project, index: number) => (
-            <ProjectCard key={project.id} project={project} index={index} />
+          {filtered.map((project, index) => (
+            <motion.div
+              key={project.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.03 }}
+            >
+              <ProjectCard project={project} />
+            </motion.div>
           ))}
         </div>
       )}

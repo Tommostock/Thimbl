@@ -1,88 +1,61 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Plus, Check, X, Trash2, Loader2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { ShoppingBag, Plus, Check, Trash2 } from 'lucide-react';
+import {
+  getShoppingList,
+  saveShoppingItem,
+  updateShoppingItem,
+  deleteShoppingItem,
+  generateId,
+} from '@/lib/storage';
 import type { ShoppingListItem } from '@/lib/types/database';
 
 /**
  * Shopping List Page
  *
- * Shows all materials needed across active projects.
+ * Shows all materials needed across active projects (from localStorage).
  * Users can check off items, add custom items, and delete items.
  */
 
 export default function ShoppingListPage() {
-  const { user } = useAuth();
   const [items, setItems] = useState<ShoppingListItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [newItem, setNewItem] = useState('');
   const [newQuantity, setNewQuantity] = useState('');
   const [showAdd, setShowAdd] = useState(false);
 
-  const fetchItems = useCallback(async () => {
-    if (!user) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('shopping_list_items')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('is_checked')
-      .order('created_at', { ascending: false });
-
-    setItems((data as ShoppingListItem[]) ?? []);
-    setLoading(false);
-  }, [user]);
-
   useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+    setItems(getShoppingList());
+  }, []);
 
-  // Toggle item checked state
-  const toggleItem = async (itemId: string, currentState: boolean) => {
-    const supabase = createClient();
-    await supabase
-      .from('shopping_list_items')
-      .update({ is_checked: !currentState })
-      .eq('id', itemId);
-
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, is_checked: !currentState } : item
-      )
-    );
+  const toggleItem = (itemId: string, currentState: boolean) => {
+    updateShoppingItem(itemId, { is_checked: !currentState });
+    setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, is_checked: !currentState } : i));
   };
 
-  // Add custom item
-  const addItem = async () => {
-    if (!user || !newItem.trim()) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('shopping_list_items')
-      .insert({
-        user_id: user.id,
-        item_name: newItem.trim(),
-        quantity: newQuantity.trim() || null,
-        is_custom: true,
-      })
-      .select()
-      .single();
-
-    if (data) {
-      setItems((prev) => [data as ShoppingListItem, ...prev]);
-    }
+  const addItem = () => {
+    if (!newItem.trim()) return;
+    const item: ShoppingListItem = {
+      id: generateId(),
+      user_id: 'local',
+      project_id: null,
+      item_name: newItem.trim(),
+      quantity: newQuantity.trim() || null,
+      is_checked: false,
+      is_custom: true,
+      created_at: new Date().toISOString(),
+    };
+    saveShoppingItem(item);
+    setItems((prev) => [item, ...prev]);
     setNewItem('');
     setNewQuantity('');
     setShowAdd(false);
   };
 
-  // Delete item
-  const deleteItem = async (itemId: string) => {
-    const supabase = createClient();
-    await supabase.from('shopping_list_items').delete().eq('id', itemId);
-    setItems((prev) => prev.filter((item) => item.id !== itemId));
+  const removeItem = (itemId: string) => {
+    deleteShoppingItem(itemId);
+    setItems((prev) => prev.filter((i) => i.id !== itemId));
   };
 
   const unchecked = items.filter((i) => !i.is_checked);
@@ -90,7 +63,6 @@ export default function ShoppingListPage() {
 
   return (
     <div className="px-4 pt-6 pb-4">
-      {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <h1
@@ -113,7 +85,6 @@ export default function ShoppingListPage() {
         </button>
       </div>
 
-      {/* Add item form */}
       <AnimatePresence>
         {showAdd && (
           <motion.div
@@ -128,6 +99,7 @@ export default function ShoppingListPage() {
                 placeholder="Item name"
                 value={newItem}
                 onChange={(e) => setNewItem(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addItem()}
                 className="w-full px-3 py-2.5 rounded-xl text-sm border outline-none"
                 style={{
                   backgroundColor: 'var(--bg-secondary)',
@@ -162,12 +134,7 @@ export default function ShoppingListPage() {
         )}
       </AnimatePresence>
 
-      {/* Items list */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 size={24} className="animate-spin" style={{ color: 'var(--accent-primary)' }} />
-        </div>
-      ) : items.length === 0 ? (
+      {items.length === 0 && (
         <div className="text-center py-12">
           <ShoppingBag size={48} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
           <p className="font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
@@ -177,25 +144,20 @@ export default function ShoppingListPage() {
             Start a project to auto-fill materials, or add items manually
           </p>
         </div>
-      ) : (
+      )}
+
+      {items.length > 0 && (
         <div className="space-y-4">
-          {/* Unchecked items */}
           {unchecked.length > 0 && (
             <div className="space-y-1">
               {unchecked.map((item) => (
-                <motion.div
-                  key={item.id}
-                  className="flex items-center gap-3 py-2.5 px-3 rounded-xl"
-                  layout
-                >
+                <motion.div key={item.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl" layout>
                   <button
                     onClick={() => toggleItem(item.id, item.is_checked)}
                     className="w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px]"
                     style={{ borderColor: 'var(--border-colour)' }}
                     aria-label={`Mark ${item.item_name} as purchased`}
-                  >
-                    {/* Empty circle */}
-                  </button>
+                  />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                       {item.item_name}
@@ -207,7 +169,7 @@ export default function ShoppingListPage() {
                     )}
                   </div>
                   <button
-                    onClick={() => deleteItem(item.id)}
+                    onClick={() => removeItem(item.id)}
                     className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center"
                     style={{ color: 'var(--text-muted)' }}
                     aria-label={`Delete ${item.item_name}`}
@@ -219,7 +181,6 @@ export default function ShoppingListPage() {
             </div>
           )}
 
-          {/* Checked items */}
           {checked.length > 0 && (
             <div>
               <p className="text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
@@ -227,21 +188,16 @@ export default function ShoppingListPage() {
               </p>
               <div className="space-y-1 opacity-60">
                 {checked.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 py-2 px-3"
-                  >
+                  <div key={item.id} className="flex items-center gap-3 py-2 px-3">
                     <button
                       onClick={() => toggleItem(item.id, item.is_checked)}
                       className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px]"
                       style={{ backgroundColor: 'var(--accent-secondary)' }}
-                      aria-label={`Unmark ${item.item_name}`}
                     >
                       <Check size={14} className="text-white" />
                     </button>
                     <span className="text-sm line-through flex-1" style={{ color: 'var(--text-muted)' }}>
-                      {item.item_name}
-                      {item.quantity && ` (${item.quantity})`}
+                      {item.item_name}{item.quantity && ` (${item.quantity})`}
                     </span>
                   </div>
                 ))}
