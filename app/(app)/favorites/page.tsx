@@ -1,50 +1,16 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
-import { Heart, Trash2 } from 'lucide-react';
+import { Heart, Trash2, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useFavorites } from '@/hooks/useFavorites';
-import { SORT_OPTIONS, DIFFICULTIES, CATEGORIES } from '@/lib/constants';
-import type { Project } from '@/lib/types/database';
-
-function parseTime(est: string | null): number {
-  if (!est) return 999;
-  const match = est.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : 999;
-}
-
-const DIFFICULTY_ORDER: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
-
-function getDifficultyColour(difficulty: string): string {
-  return DIFFICULTIES.find((d) => d.key === difficulty)?.colour ?? 'var(--text-muted)';
-}
-
-function getCategoryEmoji(category: string): string {
-  return CATEGORIES.find((c) => c.key === category)?.emoji ?? '🧵';
-}
+import { getDifficultyLabel, getCraftEmoji } from '@/lib/ravelry';
+import type { FavoritePatternMeta } from '@/lib/storage';
 
 export default function FavoritesPage() {
-  const { favorites, toggleFavorite } = useFavorites();
-  const [sortKey, setSortKey] = useState<string>('recent');
-
-  const sorted = useMemo(() => {
-    const list = [...favorites];
-    switch (sortKey) {
-      case 'name':
-        list.sort((a, b) => a.title.localeCompare(b.title));
-        break;
-      case 'difficulty':
-        list.sort((a, b) => (DIFFICULTY_ORDER[a.difficulty] ?? 0) - (DIFFICULTY_ORDER[b.difficulty] ?? 0));
-        break;
-      case 'time':
-        list.sort((a, b) => parseTime(a.estimated_time) - parseTime(b.estimated_time));
-        break;
-      default:
-        break;
-    }
-    return list;
-  }, [favorites, sortKey]);
+  const { favoritePatterns, toggleFavorite } = useFavorites();
 
   return (
     <div className="px-4 pt-6 pb-24">
@@ -56,28 +22,10 @@ export default function FavoritesPage() {
         >
           Favourites
         </h1>
-        {favorites.length > 0 && (
-          <select
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value)}
-            className="text-sm px-3 py-2 rounded-lg border-none outline-none"
-            style={{
-              backgroundColor: 'var(--bg-secondary)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-colour)',
-            }}
-          >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        )}
       </div>
 
       {/* Favorites list or empty state */}
-      {favorites.length === 0 ? (
+      {favoritePatterns.length === 0 ? (
         <div className="flex flex-col items-center justify-center pt-24 text-center">
           <Heart size={48} style={{ color: 'var(--text-muted)' }} />
           <h2
@@ -87,24 +35,24 @@ export default function FavoritesPage() {
             No favourites yet
           </h2>
           <p className="text-sm mt-2 max-w-xs" style={{ color: 'var(--text-muted)' }}>
-            Browse projects and tap the heart to save them here
+            Browse patterns and tap the heart to save them here
           </p>
           <Link
             href="/search"
             className="mt-6 px-6 py-3 rounded-xl text-sm font-medium text-white"
             style={{ backgroundColor: 'var(--accent-primary)' }}
           >
-            Browse Projects
+            Browse Patterns
           </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
           <AnimatePresence mode="popLayout">
-            {sorted.map((project) => (
+            {favoritePatterns.map((pattern) => (
               <FavoriteCard
-                key={project.id}
-                project={project}
-                onRemove={() => toggleFavorite(project.id)}
+                key={pattern.id}
+                pattern={pattern}
+                onRemove={() => toggleFavorite(pattern.id)}
               />
             ))}
           </AnimatePresence>
@@ -114,8 +62,10 @@ export default function FavoritesPage() {
   );
 }
 
-function FavoriteCard({ project, onRemove }: { project: Project; onRemove: () => void }) {
+function FavoriteCard({ pattern, onRemove }: { pattern: FavoritePatternMeta; onRemove: () => void }) {
   const [isDragging, setIsDragging] = useState(false);
+  const craftEmoji = getCraftEmoji(pattern.craft);
+  const diffLabel = getDifficultyLabel(pattern.difficulty);
 
   function handleDragEnd(_: unknown, info: PanInfo) {
     setIsDragging(false);
@@ -148,7 +98,7 @@ function FavoriteCard({ project, onRemove }: { project: Project; onRemove: () =>
         dragElastic={0.1}
         onDragStart={() => setIsDragging(true)}
         onDragEnd={handleDragEnd}
-        className="relative rounded-xl p-4"
+        className="relative rounded-xl overflow-hidden"
         style={{
           backgroundColor: 'var(--bg-secondary)',
           border: '1px solid var(--border-colour)',
@@ -156,33 +106,54 @@ function FavoriteCard({ project, onRemove }: { project: Project; onRemove: () =>
         }}
       >
         <Link
-          href={`/explore/${project.id}`}
-          onClick={(e) => {
-            if (isDragging) e.preventDefault();
-          }}
-          className="flex items-center gap-3"
+          href={`/explore/${pattern.id}`}
+          onClick={(e) => { if (isDragging) e.preventDefault(); }}
+          className="flex items-center gap-3 p-3"
         >
-          <span className="text-2xl">{getCategoryEmoji(project.category)}</span>
-          <div className="flex-1 min-w-0">
-            <h3
-              className="text-base font-semibold truncate"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {project.title}
-            </h3>
-            <div className="flex items-center gap-2 mt-1">
-              <span
-                className="text-xs font-medium px-2 py-0.5 rounded-full"
-                style={{
-                  backgroundColor: getDifficultyColour(project.difficulty) + '20',
-                  color: getDifficultyColour(project.difficulty),
-                }}
+          {/* Thumbnail */}
+          <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 relative">
+            {pattern.imageUrl ? (
+              <Image
+                src={pattern.imageUrl}
+                alt={pattern.name}
+                fill
+                className="object-cover"
+                sizes="64px"
+                unoptimized
+              />
+            ) : (
+              <div
+                className="w-full h-full flex items-center justify-center text-2xl"
+                style={{ backgroundColor: 'var(--bg-primary)' }}
               >
-                {project.difficulty.charAt(0).toUpperCase() + project.difficulty.slice(1)}
+                {craftEmoji}
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+              {pattern.name}
+            </h3>
+            <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
+              by {pattern.designer}
+            </p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-muted)' }}>
+                {craftEmoji} {pattern.craft}
               </span>
-              {project.estimated_time && (
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {project.estimated_time}
+              <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
+                {diffLabel}
+              </span>
+              {pattern.rating > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                  <Star size={9} fill="#F59E0B" stroke="#F59E0B" />
+                  {pattern.rating.toFixed(1)}
+                </span>
+              )}
+              {pattern.free && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-500 text-white">
+                  FREE
                 </span>
               )}
             </div>

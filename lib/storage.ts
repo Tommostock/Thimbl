@@ -30,6 +30,17 @@ export interface StoredProfile {
   favourite_category: string;
 }
 
+export interface FavoritePatternMeta {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  craft: string;
+  designer: string;
+  difficulty: number;
+  rating: number;
+  free: boolean;
+}
+
 export interface ThimblStorage {
   profile: StoredProfile;
   userProjects: UserProject[];
@@ -38,6 +49,7 @@ export interface ThimblStorage {
   unlockedAchievements: string[];
   userPhotos: StoredPhoto[];
   favorites: string[];
+  favoritePatterns: FavoritePatternMeta[];
   journalEntries: JournalEntry[];
   recentlyViewed: string[];
   projectNotes: ProjectNote[];
@@ -61,6 +73,7 @@ const DEFAULT_STORAGE: ThimblStorage = {
   unlockedAchievements: [],
   userPhotos: [],
   favorites: [],
+  favoritePatterns: [],
   journalEntries: [],
   recentlyViewed: [],
   projectNotes: [],
@@ -194,16 +207,27 @@ export function getFavorites(): string[] {
   return getStorage().favorites;
 }
 
-export function addFavorite(projectId: string): void {
-  const { favorites } = getStorage();
+export function addFavorite(projectId: string, meta?: FavoritePatternMeta): void {
+  const { favorites, favoritePatterns } = getStorage();
   if (!favorites.includes(projectId)) {
-    setStorage({ favorites: [projectId, ...favorites] });
+    const updates: Partial<ThimblStorage> = { favorites: [projectId, ...favorites] };
+    if (meta) {
+      updates.favoritePatterns = [meta, ...favoritePatterns.filter((p) => p.id !== projectId)];
+    }
+    setStorage(updates);
   }
 }
 
 export function removeFavorite(projectId: string): void {
-  const { favorites } = getStorage();
-  setStorage({ favorites: favorites.filter((id) => id !== projectId) });
+  const { favorites, favoritePatterns } = getStorage();
+  setStorage({
+    favorites: favorites.filter((id) => id !== projectId),
+    favoritePatterns: favoritePatterns.filter((p) => p.id !== projectId),
+  });
+}
+
+export function getFavoritePatterns(): FavoritePatternMeta[] {
+  return getStorage().favoritePatterns;
 }
 
 export function isFavorite(projectId: string): boolean {

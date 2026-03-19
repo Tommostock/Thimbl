@@ -1,105 +1,72 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, SlidersHorizontal, SearchX } from 'lucide-react';
-import { PROJECTS } from '@/lib/data';
-import { DIFFICULTIES } from '@/lib/constants';
-import CategoryFilter from '@/components/catalogue/CategoryFilter';
-import ProjectCard from '@/components/catalogue/ProjectCard';
-import FilterSheet, { type FilterState } from '@/components/search/FilterSheet';
+import { Search, SearchX, Loader2 } from 'lucide-react';
+import { useInfinitePatternSearch } from '@/hooks/useRavelry';
+import RavelryPatternCard from '@/components/catalogue/RavelryPatternCard';
 
-// ============================================
-// Helpers
-// ============================================
+/**
+ * Search Page
+ *
+ * Searches Ravelry patterns by text query, craft type, and availability.
+ * Shows results with real community photos.
+ */
 
-function matchesTimeRange(estimatedTime: string | null, ranges: string[]): boolean {
-  if (ranges.length === 0) return true;
-  if (!estimatedTime) return false;
-  const hours = parseFloat(estimatedTime) || 0;
-  const isMinutes = estimatedTime.toLowerCase().includes('min');
-  const h = isMinutes ? hours / 60 : hours;
-  return ranges.some((r) => {
-    if (r === 'under-2h') return h < 2;
-    if (r === '2-4h') return h >= 2 && h < 4;
-    if (r === '4-8h') return h >= 4 && h < 8;
-    if (r === '8h+') return h >= 8;
-    return false;
-  });
-}
+const CRAFT_FILTERS = [
+  { key: null as string | null, label: 'All' },
+  { key: 'knitting', label: '🧶 Knitting' },
+  { key: 'crochet', label: '🪝 Crochet' },
+];
 
-// ============================================
-// Search Page
-// ============================================
-
-const DEFAULT_FILTERS: FilterState = {
-  timeRange: [],
-  tags: [],
-  difficulty: [],
-};
+const SORT_OPTIONS = [
+  { key: 'best', label: 'Best Match' },
+  { key: 'recently-popular', label: 'Trending' },
+  { key: 'favorites', label: 'Most Loved' },
+  { key: 'date', label: 'Newest' },
+];
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [category, setCategory] = useState<string | null>(null);
-  const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
-  const [advancedFilters, setAdvancedFilters] = useState<FilterState>({ ...DEFAULT_FILTERS });
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [craft, setCraft] = useState<'knitting' | 'crochet' | undefined>(undefined);
+  const [sort, setSort] = useState('best');
+  const [freeOnly, setFreeOnly] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Debounce search input
+  // Debounce
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    const timer = setTimeout(() => setDebouncedQuery(query), 400);
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Count active advanced filters
-  const advancedFilterCount =
-    advancedFilters.timeRange.length + advancedFilters.tags.length;
+  const { patterns, loading, error, hasMore, loadMore } = useInfinitePatternSearch({
+    query: debouncedQuery || undefined,
+    craft,
+    sort,
+    availability: freeOnly ? 'free' : undefined,
+    page_size: 20,
+  });
 
-  // Toggle difficulty
-  function toggleDifficulty(key: string) {
-    setSelectedDifficulties((prev) =>
-      prev.includes(key) ? prev.filter((d) => d !== key) : [...prev, key]
+  // Infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !loading) {
+          loadMore();
+        }
+      },
+      { rootMargin: '200px' },
     );
-  }
 
-  // Filter projects
-  const results = useMemo(() => {
-    const q = debouncedQuery.toLowerCase().trim();
-
-    return PROJECTS.filter((project) => {
-      // Text search
-      if (q) {
-        const matchesTitle = project.title.toLowerCase().includes(q);
-        const matchesDesc = project.description?.toLowerCase().includes(q);
-        const matchesTags = project.tags?.some((t) => t.toLowerCase().includes(q));
-        if (!matchesTitle && !matchesDesc && !matchesTags) return false;
-      }
-
-      // Category
-      if (category && project.category !== category) return false;
-
-      // Difficulty (from inline buttons OR advanced filters -- merge both)
-      const allDifficulties = [
-        ...new Set([...selectedDifficulties, ...advancedFilters.difficulty]),
-      ];
-      if (allDifficulties.length > 0 && !allDifficulties.includes(project.difficulty)) return false;
-
-      // Time range
-      if (!matchesTimeRange(project.estimated_time, advancedFilters.timeRange)) return false;
-
-      // Tags (project must have at least one matching tag)
-      if (advancedFilters.tags.length > 0) {
-        const projectTags = project.tags ?? [];
-        const hasMatch = advancedFilters.tags.some((t) => projectTags.includes(t));
-        if (!hasMatch) return false;
-      }
-
-      return true;
-    });
-  }, [debouncedQuery, category, selectedDifficulties, advancedFilters]);
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadMore]);
 
   return (
     <div className="px-4 pt-6 pb-24">
@@ -128,67 +95,80 @@ export default function SearchPage() {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setInputFocused(true)}
           onBlur={() => setInputFocused(false)}
-          placeholder="Search projects..."
+          placeholder="Search patterns..."
           className="w-full pl-11 pr-4 py-3 bg-transparent text-sm outline-none"
           style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
         />
       </motion.div>
 
-      {/* Category pills */}
-      <div className="mb-4">
-        <CategoryFilter selected={category} onSelect={setCategory} />
-      </div>
-
-      {/* Difficulty toggles + Filter button */}
-      <div className="flex items-center gap-2 mb-4">
-        {DIFFICULTIES.map((d) => {
-          const isActive = selectedDifficulties.includes(d.key);
+      {/* Craft filter pills */}
+      <div className="flex gap-2 mb-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        {CRAFT_FILTERS.map((f) => {
+          const isActive = craft === f.key || (f.key === null && !craft);
           return (
             <button
-              key={d.key}
-              onClick={() => toggleDifficulty(d.key)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors"
+              key={f.key ?? 'all'}
+              onClick={() => setCraft(f.key as typeof craft)}
+              className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors"
               style={{
-                borderColor: isActive ? 'var(--accent-primary)' : 'var(--border-colour)',
-                backgroundColor: isActive ? 'var(--bg-secondary)' : 'transparent',
-                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                backgroundColor: isActive ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+                color: isActive ? '#fff' : 'var(--text-secondary)',
               }}
             >
-              <span
-                className="w-2 h-2 rounded-full inline-block"
-                style={{ backgroundColor: d.colour }}
-              />
-              {d.label}
+              {f.label}
             </button>
           );
         })}
 
-        {/* Advanced filter button */}
+        {/* Free only toggle */}
         <button
-          onClick={() => setSheetOpen(true)}
-          className="relative ml-auto p-2 rounded-full border"
-          style={{ borderColor: 'var(--border-colour)', color: 'var(--text-secondary)' }}
+          onClick={() => setFreeOnly(!freeOnly)}
+          className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors"
+          style={{
+            backgroundColor: freeOnly ? '#22C55E' : 'var(--bg-secondary)',
+            color: freeOnly ? '#fff' : 'var(--text-secondary)',
+          }}
         >
-          <SlidersHorizontal size={16} />
-          {advancedFilterCount > 0 && (
-            <span
-              className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
-              style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
-            >
-              {advancedFilterCount}
-            </span>
-          )}
+          🆓 Free Only
         </button>
       </div>
 
+      {/* Sort options */}
+      <div className="flex gap-2 mb-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        {SORT_OPTIONS.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => setSort(s.key)}
+            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors"
+            style={{
+              borderColor: sort === s.key ? 'var(--accent-primary)' : 'var(--border-colour)',
+              backgroundColor: sort === s.key ? 'var(--bg-secondary)' : 'transparent',
+              color: sort === s.key ? 'var(--text-primary)' : 'var(--text-muted)',
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="p-4 rounded-xl mb-4" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+          <p className="text-sm font-medium">Could not load patterns</p>
+          <p className="text-xs mt-1">{error}</p>
+        </div>
+      )}
+
       {/* Result count */}
-      <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-muted)' }}>
-        {results.length} project{results.length !== 1 ? 's' : ''} found
-      </p>
+      {!loading && patterns.length > 0 && (
+        <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-muted)' }}>
+          {patterns.length} pattern{patterns.length !== 1 ? 's' : ''} loaded
+        </p>
+      )}
 
       {/* Results grid */}
       <AnimatePresence mode="wait">
-        {results.length > 0 ? (
+        {patterns.length > 0 ? (
           <motion.div
             key="results"
             className="grid grid-cols-2 gap-3"
@@ -196,18 +176,11 @@ export default function SearchPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            {results.map((project, index) => (
-              <motion.div
-                key={project.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03, duration: 0.25 }}
-              >
-                <ProjectCard project={project} index={index} />
-              </motion.div>
+            {patterns.map((pattern, index) => (
+              <RavelryPatternCard key={pattern.id} pattern={pattern} index={index} />
             ))}
           </motion.div>
-        ) : (
+        ) : !loading ? (
           <motion.div
             key="empty"
             className="flex flex-col items-center justify-center pt-20"
@@ -220,22 +193,24 @@ export default function SearchPage() {
               className="text-base font-semibold mt-4"
               style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}
             >
-              No projects found
+              No patterns found
             </h3>
             <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-              Try adjusting your filters
+              Try a different search or filter
             </p>
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
 
-      {/* Advanced filter sheet */}
-      <FilterSheet
-        isOpen={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        filters={advancedFilters}
-        onApply={setAdvancedFilters}
-      />
+      {/* Loading indicator */}
+      {loading && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 size={24} className="animate-spin" style={{ color: 'var(--accent-primary)' }} />
+        </div>
+      )}
+
+      {/* Infinite scroll sentinel */}
+      <div ref={sentinelRef} className="h-1" />
     </div>
   );
 }
