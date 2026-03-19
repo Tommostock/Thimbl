@@ -3,8 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 const RAVELRY_API = 'https://api.ravelry.com';
 
 function getAuthHeader(): string | null {
-  const user = process.env.RAVELRY_USERNAME;
-  const pass = process.env.RAVELRY_PASSWORD;
+  // Ravelry basic auth uses the API access key + personal key from
+  // https://www.ravelry.com/pro/developer (NOT your Ravelry login credentials)
+  const user = process.env.RAVELRY_ACCESS_KEY;
+  const pass = process.env.RAVELRY_PERSONAL_KEY;
   if (!user || !pass) return null;
   return 'Basic ' + Buffer.from(`${user}:${pass}`).toString('base64');
 }
@@ -14,7 +16,7 @@ export async function GET(request: NextRequest) {
   const auth = getAuthHeader();
   if (!auth) {
     return NextResponse.json(
-      { error: 'Ravelry API credentials not configured' },
+      { error: 'Ravelry API credentials not configured. Set RAVELRY_ACCESS_KEY and RAVELRY_PERSONAL_KEY in your environment variables.' },
       { status: 500 }
     );
   }
@@ -39,12 +41,15 @@ export async function GET(request: NextRequest) {
     const res = await fetch(url, {
       headers: {
         Authorization: auth,
-        'User-Agent': 'Thimbl/1.0',
+        Accept: 'application/json',
+        'User-Agent': 'Thimbl/1.0 (https://thimbl.vercel.app)',
       },
       next: { revalidate: 3600 }, // cache for 1 hour
     });
 
     if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error(`Ravelry API ${res.status}: ${body}`);
       return NextResponse.json(
         { error: `Ravelry API error: ${res.status}` },
         { status: res.status }
@@ -54,6 +59,7 @@ export async function GET(request: NextRequest) {
     const data = await res.json();
     return NextResponse.json(data);
   } catch (err) {
+    console.error('Ravelry API fetch error:', err);
     return NextResponse.json(
       { error: 'Failed to fetch from Ravelry API' },
       { status: 500 }

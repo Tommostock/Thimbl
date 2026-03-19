@@ -81,7 +81,7 @@ export default function DashboardPage() {
         <div className="p-4 rounded-xl mb-6" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
           <p className="text-sm font-medium">Could not load patterns</p>
           <p className="text-xs mt-1">{error}</p>
-          <p className="text-xs mt-2">Make sure RAVELRY_USERNAME and RAVELRY_PASSWORD are set in your Vercel environment variables.</p>
+          <p className="text-xs mt-2">Make sure RAVELRY_ACCESS_KEY and RAVELRY_PERSONAL_KEY are set in your Vercel environment variables. Get these from your Ravelry developer app at ravelry.com/pro/developer.</p>
         </div>
       )}
 
