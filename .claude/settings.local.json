@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l \"/c/Users/Tom/Desktop/Apps I Built/Thimbl/.claude/worktrees/gracious-chaum/Desktop/Apps I Built/PassCheck/lib\"/*.ts \"/c/Users/Tom/Desktop/Apps I Built/Thimbl/.claude/worktrees/gracious-chaum/Desktop/Apps I Built/PassCheck/components\"/*.tsx \"/c/Users/Tom/Desktop/Apps I Built/Thimbl/.claude/worktrees/gracious-chaum/Desktop/Apps I Built/PassCheck/app\"/*.tsx)",
+      "Bash(git -C \"C:/Users/Tom/Desktop/Apps I Built/Thimbl\" ls-tree -r HEAD --name-only)"
+    ]
+  }
+}

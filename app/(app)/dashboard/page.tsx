@@ -1,60 +1,28 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Moon, Loader2 } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { searchPatterns, type RavelryPatternSearchResult } from '@/lib/ravelry';
+import { TUTORIALS, SUBCATEGORIES, getTutorialsByCategory, getTutorialsBySubcategory } from '@/lib/tutorials';
 import SectionHeader from '@/components/home/SectionHeader';
-import RavelryCardSmall from '@/components/home/RavelryCardSmall';
-import RavelryPatternCard from '@/components/catalogue/RavelryPatternCard';
-
-/**
- * Dashboard / Home Page
- *
- * Shows Ravelry patterns: popular knitting, popular crochet, free patterns,
- * and trending. Real photos from the Ravelry community.
- */
-
-interface Section {
-  title: string;
-  patterns: RavelryPatternSearchResult[];
-  loading: boolean;
-}
+import TutorialCardSmall from '@/components/home/TutorialCardSmall';
+import TutorialCard from '@/components/catalogue/TutorialCard';
 
 export default function DashboardPage() {
   const { theme, toggleTheme } = useTheme();
-  const [sections, setSections] = useState<Record<string, Section>>({
-    popularKnitting: { title: '🧶 Popular Knitting', patterns: [], loading: true },
-    popularCrochet: { title: '🪝 Popular Crochet', patterns: [], loading: true },
-    freePatterns: { title: '🆓 Free Patterns', patterns: [], loading: true },
-    trending: { title: '🔥 Trending', patterns: [], loading: true },
-  });
-  const [error, setError] = useState<string | null>(null);
+  const [selectedSub, setSelectedSub] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadSections() {
-      try {
-        const [knitting, crochet, free, trending] = await Promise.all([
-          searchPatterns({ craft: 'knitting', sort: 'best', page_size: 10, availability: 'free' }),
-          searchPatterns({ craft: 'crochet', sort: 'best', page_size: 10, availability: 'free' }),
-          searchPatterns({ sort: 'recently-popular', page_size: 10, availability: 'free' }),
-          searchPatterns({ sort: 'recently-popular', page_size: 20 }),
-        ]);
+  const knittingHighlights = useMemo(() => getTutorialsByCategory('knitting').slice(0, 10), []);
+  const crochetHighlights = useMemo(() => getTutorialsByCategory('crochet').slice(0, 10), []);
+  const toyHighlights = useMemo(() => getTutorialsBySubcategory('Toys'), []);
+  const babyHighlights = useMemo(() => getTutorialsBySubcategory('Baby'), []);
+  const christmasHighlights = useMemo(() => getTutorialsBySubcategory('Christmas'), []);
 
-        setSections({
-          popularKnitting: { title: '🧶 Popular Knitting', patterns: knitting.patterns, loading: false },
-          popularCrochet: { title: '🪝 Popular Crochet', patterns: crochet.patterns, loading: false },
-          freePatterns: { title: '🆓 Free Patterns', patterns: free.patterns, loading: false },
-          trending: { title: '🔥 Trending', patterns: trending.patterns, loading: false },
-        });
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to load patterns');
-      }
-    }
-
-    loadSections();
-  }, []);
+  const allTutorials = useMemo(
+    () => (selectedSub ? getTutorialsBySubcategory(selectedSub) : TUTORIALS),
+    [selectedSub],
+  );
 
   return (
     <div className="px-4 pt-6 pb-24">
@@ -76,55 +44,105 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Error state */}
-      {error && (
-        <div className="p-4 rounded-xl mb-6" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
-          <p className="text-sm font-medium">Could not load patterns</p>
-          <p className="text-xs mt-1">{error}</p>
-          <p className="text-xs mt-2">Make sure RAVELRY_ACCESS_KEY and RAVELRY_PERSONAL_KEY are set in your Vercel environment variables. Get these from your Ravelry developer app at ravelry.com/pro/developer.</p>
-        </div>
-      )}
+      {/* Subcategory pills */}
+      <div className="flex gap-2 mb-6 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        <button
+          onClick={() => setSelectedSub(null)}
+          className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors shrink-0"
+          style={{
+            backgroundColor: !selectedSub ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+            color: !selectedSub ? '#fff' : 'var(--text-secondary)',
+          }}
+        >
+          All
+        </button>
+        {SUBCATEGORIES.map((sub) => (
+          <button
+            key={sub.key}
+            onClick={() => setSelectedSub(selectedSub === sub.key ? null : sub.key)}
+            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors shrink-0"
+            style={{
+              backgroundColor: selectedSub === sub.key ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+              color: selectedSub === sub.key ? '#fff' : 'var(--text-secondary)',
+            }}
+          >
+            {sub.emoji} {sub.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Horizontal scroll sections */}
-      {['popularKnitting', 'popularCrochet', 'freePatterns'].map((key) => {
-        const section = sections[key as keyof typeof sections];
-        return (
-          <div key={key} className="mb-6">
-            <SectionHeader title={section.title} href="/search" />
-            {section.loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
-              </div>
-            ) : section.patterns.length > 0 ? (
+      {/* Horizontal scroll sections (only when no subcategory filter) */}
+      {!selectedSub && (
+        <>
+          <div className="mb-6">
+            <SectionHeader title="🧶 Knitting Patterns" href="/search" />
+            <div className="flex gap-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+              {knittingHighlights.map((t) => (
+                <TutorialCardSmall key={t.id} tutorial={t} />
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <SectionHeader title="🪝 Crochet Patterns" href="/search" />
+            <div className="flex gap-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+              {crochetHighlights.map((t) => (
+                <TutorialCardSmall key={t.id} tutorial={t} />
+              ))}
+            </div>
+          </div>
+
+          {toyHighlights.length > 0 && (
+            <div className="mb-6">
+              <SectionHeader title="🧸 Toys & Amigurumi" />
               <div className="flex gap-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-                {section.patterns.map((pattern) => (
-                  <RavelryCardSmall key={pattern.id} pattern={pattern} />
+                {toyHighlights.map((t) => (
+                  <TutorialCardSmall key={t.id} tutorial={t} />
                 ))}
               </div>
-            ) : null}
-          </div>
-        );
-      })}
+            </div>
+          )}
 
-      {/* Trending grid */}
+          {babyHighlights.length > 0 && (
+            <div className="mb-6">
+              <SectionHeader title="👶 Baby Patterns" />
+              <div className="flex gap-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                {babyHighlights.map((t) => (
+                  <TutorialCardSmall key={t.id} tutorial={t} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {christmasHighlights.length > 0 && (
+            <div className="mb-6">
+              <SectionHeader title="🎄 Christmas & Holiday" />
+              <div className="flex gap-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                {christmasHighlights.map((t) => (
+                  <TutorialCardSmall key={t.id} tutorial={t} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* All tutorials grid */}
       <div className="mb-6">
-        <SectionHeader title={sections.trending.title} href="/search" count={sections.trending.patterns.length} />
-        {sections.trending.loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
-          </div>
-        ) : (
-          <motion.div
-            className="grid grid-cols-2 gap-3"
-            initial="hidden"
-            animate="visible"
-            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
-          >
-            {sections.trending.patterns.map((pattern, index) => (
-              <RavelryPatternCard key={pattern.id} pattern={pattern} index={index} />
-            ))}
-          </motion.div>
-        )}
+        <SectionHeader
+          title={selectedSub ? `${SUBCATEGORIES.find((s) => s.key === selectedSub)?.emoji ?? ''} ${selectedSub}` : 'All Patterns'}
+          count={allTutorials.length}
+        />
+        <motion.div
+          className="grid grid-cols-2 gap-3"
+          initial="hidden"
+          animate="visible"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
+        >
+          {allTutorials.map((tutorial, index) => (
+            <TutorialCard key={tutorial.id} tutorial={tutorial} index={index} />
+          ))}
+        </motion.div>
       </div>
     </div>
   );

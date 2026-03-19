@@ -1,17 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, SearchX, Loader2 } from 'lucide-react';
-import { useInfinitePatternSearch } from '@/hooks/useRavelry';
-import RavelryPatternCard from '@/components/catalogue/RavelryPatternCard';
-
-/**
- * Search Page
- *
- * Searches Ravelry patterns by text query, craft type, and availability.
- * Shows results with real community photos.
- */
+import { Search, SearchX } from 'lucide-react';
+import { TUTORIALS, SUBCATEGORIES, searchTutorials, type CraftTutorial } from '@/lib/tutorials';
+import TutorialCard from '@/components/catalogue/TutorialCard';
 
 const CRAFT_FILTERS = [
   { key: null as string | null, label: 'All' },
@@ -19,70 +12,33 @@ const CRAFT_FILTERS = [
   { key: 'crochet', label: '🪝 Crochet' },
 ];
 
-const SORT_OPTIONS = [
-  { key: 'best', label: 'Best Match' },
-  { key: 'recently-popular', label: 'Trending' },
-  { key: 'favorites', label: 'Most Loved' },
-  { key: 'date', label: 'Newest' },
-];
-
 export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [craft, setCraft] = useState<'knitting' | 'crochet' | undefined>(undefined);
-  const [sort, setSort] = useState('best');
-  const [freeOnly, setFreeOnly] = useState(false);
+  const [craft, setCraft] = useState<string | null>(null);
+  const [subcategory, setSubcategory] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Debounce
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), 400);
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
     return () => clearTimeout(timer);
   }, [query]);
 
-  const { patterns, loading, error, hasMore, loadMore } = useInfinitePatternSearch({
-    query: debouncedQuery || undefined,
-    craft,
-    sort,
-    availability: freeOnly ? 'free' : undefined,
-    page_size: 20,
-  });
-
-  // Infinite scroll
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && hasMore && !loading) {
-          loadMore();
-        }
-      },
-      { rootMargin: '200px' },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, loading, loadMore]);
+  const results = useMemo(() => {
+    let filtered: CraftTutorial[] = debouncedQuery ? searchTutorials(debouncedQuery) : [...TUTORIALS];
+    if (craft) filtered = filtered.filter((t) => t.category === craft);
+    if (subcategory) filtered = filtered.filter((t) => t.subcategory === subcategory);
+    return filtered;
+  }, [debouncedQuery, craft, subcategory]);
 
   return (
     <div className="px-4 pt-6 pb-24">
       {/* Search bar */}
       <motion.div
         className="relative mb-4"
-        animate={{
-          borderColor: inputFocused ? 'var(--accent-primary)' : 'var(--border-colour)',
-        }}
+        animate={{ borderColor: inputFocused ? 'var(--accent-primary)' : 'var(--border-colour)' }}
         transition={{ duration: 0.2 }}
-        style={{
-          borderWidth: 1.5,
-          borderStyle: 'solid',
-          borderRadius: 16,
-          backgroundColor: 'var(--bg-secondary)',
-        }}
+        style={{ borderWidth: 1.5, borderStyle: 'solid', borderRadius: 16, backgroundColor: 'var(--bg-secondary)' }}
       >
         <Search
           size={18}
@@ -90,26 +46,25 @@ export default function SearchPage() {
           style={{ color: inputFocused ? 'var(--accent-primary)' : 'var(--text-muted)' }}
         />
         <input
-          ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setInputFocused(true)}
           onBlur={() => setInputFocused(false)}
           placeholder="Search patterns..."
           className="w-full pl-11 pr-4 py-3 bg-transparent text-sm outline-none"
-          style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
+          style={{ color: 'var(--text-primary)' }}
         />
       </motion.div>
 
-      {/* Craft filter pills */}
+      {/* Craft filter */}
       <div className="flex gap-2 mb-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
         {CRAFT_FILTERS.map((f) => {
-          const isActive = craft === f.key || (f.key === null && !craft);
+          const isActive = craft === f.key;
           return (
             <button
               key={f.key ?? 'all'}
-              onClick={() => setCraft(f.key as typeof craft)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors"
+              onClick={() => setCraft(f.key)}
+              className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors shrink-0"
               style={{
                 backgroundColor: isActive ? 'var(--accent-primary)' : 'var(--bg-secondary)',
                 color: isActive ? '#fff' : 'var(--text-secondary)',
@@ -119,56 +74,45 @@ export default function SearchPage() {
             </button>
           );
         })}
-
-        {/* Free only toggle */}
-        <button
-          onClick={() => setFreeOnly(!freeOnly)}
-          className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors"
-          style={{
-            backgroundColor: freeOnly ? '#22C55E' : 'var(--bg-secondary)',
-            color: freeOnly ? '#fff' : 'var(--text-secondary)',
-          }}
-        >
-          🆓 Free Only
-        </button>
       </div>
 
-      {/* Sort options */}
+      {/* Subcategory filter */}
       <div className="flex gap-2 mb-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-        {SORT_OPTIONS.map((s) => (
+        <button
+          onClick={() => setSubcategory(null)}
+          className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0"
+          style={{
+            borderColor: !subcategory ? 'var(--accent-primary)' : 'var(--border-colour)',
+            backgroundColor: !subcategory ? 'var(--bg-secondary)' : 'transparent',
+            color: !subcategory ? 'var(--text-primary)' : 'var(--text-muted)',
+          }}
+        >
+          All Types
+        </button>
+        {SUBCATEGORIES.map((sub) => (
           <button
-            key={s.key}
-            onClick={() => setSort(s.key)}
-            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors"
+            key={sub.key}
+            onClick={() => setSubcategory(subcategory === sub.key ? null : sub.key)}
+            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0"
             style={{
-              borderColor: sort === s.key ? 'var(--accent-primary)' : 'var(--border-colour)',
-              backgroundColor: sort === s.key ? 'var(--bg-secondary)' : 'transparent',
-              color: sort === s.key ? 'var(--text-primary)' : 'var(--text-muted)',
+              borderColor: subcategory === sub.key ? 'var(--accent-primary)' : 'var(--border-colour)',
+              backgroundColor: subcategory === sub.key ? 'var(--bg-secondary)' : 'transparent',
+              color: subcategory === sub.key ? 'var(--text-primary)' : 'var(--text-muted)',
             }}
           >
-            {s.label}
+            {sub.emoji} {sub.label}
           </button>
         ))}
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="p-4 rounded-xl mb-4" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
-          <p className="text-sm font-medium">Could not load patterns</p>
-          <p className="text-xs mt-1">{error}</p>
-        </div>
-      )}
-
-      {/* Result count */}
-      {!loading && patterns.length > 0 && (
-        <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-muted)' }}>
-          {patterns.length} pattern{patterns.length !== 1 ? 's' : ''} loaded
-        </p>
-      )}
+      {/* Results count */}
+      <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-muted)' }}>
+        {results.length} pattern{results.length !== 1 ? 's' : ''} found
+      </p>
 
       {/* Results grid */}
       <AnimatePresence mode="wait">
-        {patterns.length > 0 ? (
+        {results.length > 0 ? (
           <motion.div
             key="results"
             className="grid grid-cols-2 gap-3"
@@ -176,11 +120,11 @@ export default function SearchPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            {patterns.map((pattern, index) => (
-              <RavelryPatternCard key={pattern.id} pattern={pattern} index={index} />
+            {results.map((tutorial, index) => (
+              <TutorialCard key={tutorial.id} tutorial={tutorial} index={index} />
             ))}
           </motion.div>
-        ) : !loading ? (
+        ) : (
           <motion.div
             key="empty"
             className="flex flex-col items-center justify-center pt-20"
@@ -199,18 +143,8 @@ export default function SearchPage() {
               Try a different search or filter
             </p>
           </motion.div>
-        ) : null}
+        )}
       </AnimatePresence>
-
-      {/* Loading indicator */}
-      {loading && (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 size={24} className="animate-spin" style={{ color: 'var(--accent-primary)' }} />
-        </div>
-      )}
-
-      {/* Infinite scroll sentinel */}
-      <div ref={sentinelRef} className="h-1" />
     </div>
   );
 }
