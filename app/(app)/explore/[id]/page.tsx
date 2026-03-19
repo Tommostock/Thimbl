@@ -304,7 +304,7 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
             />
 
             {/* Instructions */}
-            <PatternInstructions sections={content.sections} />
+            <PatternInstructions sections={content.sections} patternId={id} />
 
             {/* Tips */}
             <PatternTips tips={content.tips} />
