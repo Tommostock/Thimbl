@@ -97,13 +97,3 @@ export const SEASONAL_CONFIG = {
 
 export type Season = keyof typeof SEASONAL_CONFIG;
 
-// ============================================
-// Favorites Sort Options
-// ============================================
-
-export const SORT_OPTIONS = [
-  { key: 'recent', label: 'Recently Added' },
-  { key: 'name', label: 'Name' },
-  { key: 'difficulty', label: 'Difficulty' },
-  { key: 'time', label: 'Time' },
-] as const;
