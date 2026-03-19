@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Thimbl — Your gamified textile crafting companion",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
