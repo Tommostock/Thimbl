@@ -3,10 +3,9 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
-import { Heart, Trash2, Star } from 'lucide-react';
+import { Heart, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useFavorites } from '@/hooks/useFavorites';
-import { getDifficultyLabel, getCraftEmoji } from '@/lib/ravelry';
 import type { FavoritePatternMeta } from '@/lib/storage';
 
 export default function FavoritesPage() {
@@ -64,8 +63,7 @@ export default function FavoritesPage() {
 
 function FavoriteCard({ pattern, onRemove }: { pattern: FavoritePatternMeta; onRemove: () => void }) {
   const [isDragging, setIsDragging] = useState(false);
-  const craftEmoji = getCraftEmoji(pattern.craft);
-  const diffLabel = getDifficultyLabel(pattern.difficulty);
+  const craftEmoji = pattern.craft === 'knitting' ? '🧶' : pattern.craft === 'crochet' ? '🪝' : '🧵';
 
   function handleDragEnd(_: unknown, info: PanInfo) {
     setIsDragging(false);
@@ -142,15 +140,6 @@ function FavoriteCard({ pattern, onRemove }: { pattern: FavoritePatternMeta; onR
               <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-muted)' }}>
                 {craftEmoji} {pattern.craft}
               </span>
-              <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
-                {diffLabel}
-              </span>
-              {pattern.rating > 0 && (
-                <span className="inline-flex items-center gap-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                  <Star size={9} fill="#F59E0B" stroke="#F59E0B" />
-                  {pattern.rating.toFixed(1)}
-                </span>
-              )}
               {pattern.free && (
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-500 text-white">
                   FREE
