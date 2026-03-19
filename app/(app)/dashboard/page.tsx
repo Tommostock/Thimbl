@@ -1,68 +1,60 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Loader2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { PROJECTS } from '@/lib/data';
-import { getCurrentSeason, getSeasonalProjects } from '@/lib/seasonal';
-import { getRecentlyViewed } from '@/lib/storage';
-import { CATEGORIES } from '@/lib/constants';
-import CategoryPills from '@/components/home/CategoryPills';
+import { searchPatterns, type RavelryPatternSearchResult } from '@/lib/ravelry';
 import SectionHeader from '@/components/home/SectionHeader';
-import ProjectCardSmall from '@/components/home/ProjectCardSmall';
-import ProjectCard from '@/components/catalogue/ProjectCard';
+import RavelryCardSmall from '@/components/home/RavelryCardSmall';
+import RavelryPatternCard from '@/components/catalogue/RavelryPatternCard';
 
 /**
  * Dashboard / Home Page
  *
- * BakeBook-style home with category pills, horizontal scroll sections,
- * seasonal highlights, featured projects, quick & easy, recently viewed,
- * and a filterable "All Projects" grid.
+ * Shows Ravelry patterns: popular knitting, popular crochet, free patterns,
+ * and trending. Real photos from the Ravelry community.
  */
+
+interface Section {
+  title: string;
+  patterns: RavelryPatternSearchResult[];
+  loading: boolean;
+}
 
 export default function DashboardPage() {
   const { theme, toggleTheme } = useTheme();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [sections, setSections] = useState<Record<string, Section>>({
+    popularKnitting: { title: '🧶 Popular Knitting', patterns: [], loading: true },
+    popularCrochet: { title: '🪝 Popular Crochet', patterns: [], loading: true },
+    freePatterns: { title: '🆓 Free Patterns', patterns: [], loading: true },
+    trending: { title: '🔥 Trending', patterns: [], loading: true },
+  });
+  const [error, setError] = useState<string | null>(null);
 
-  // Seasonal projects
-  const season = getCurrentSeason();
-  const seasonalProjects = useMemo(() => getSeasonalProjects(PROJECTS), []);
+  useEffect(() => {
+    async function loadSections() {
+      try {
+        const [knitting, crochet, free, trending] = await Promise.all([
+          searchPatterns({ craft: 'knitting', sort: 'best', page_size: 10, availability: 'free' }),
+          searchPatterns({ craft: 'crochet', sort: 'best', page_size: 10, availability: 'free' }),
+          searchPatterns({ sort: 'recently-popular', page_size: 10, availability: 'free' }),
+          searchPatterns({ sort: 'recently-popular', page_size: 20 }),
+        ]);
 
-  // Featured projects
-  const featuredProjects = useMemo(
-    () => PROJECTS.filter((p) => p.isFeatured),
-    []
-  );
+        setSections({
+          popularKnitting: { title: '🧶 Popular Knitting', patterns: knitting.patterns, loading: false },
+          popularCrochet: { title: '🪝 Popular Crochet', patterns: crochet.patterns, loading: false },
+          freePatterns: { title: '🆓 Free Patterns', patterns: free.patterns, loading: false },
+          trending: { title: '🔥 Trending', patterns: trending.patterns, loading: false },
+        });
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load patterns');
+      }
+    }
 
-  // Quick & Easy: beginner + short time
-  const quickProjects = useMemo(
-    () =>
-      PROJECTS.filter(
-        (p) =>
-          p.difficulty === 'beginner' &&
-          p.estimated_time &&
-          (/\b1\b/.test(p.estimated_time) || /45/.test(p.estimated_time))
-      ),
-    []
-  );
-
-  // Recently viewed
-  const recentlyViewedProjects = useMemo(() => {
-    const ids = getRecentlyViewed();
-    return ids
-      .map((id) => PROJECTS.find((p) => p.id === id))
-      .filter(Boolean) as typeof PROJECTS;
+    loadSections();
   }, []);
-
-  // All projects filtered by category
-  const allProjects = useMemo(
-    () =>
-      selectedCategory
-        ? PROJECTS.filter((p) => p.category === selectedCategory)
-        : PROJECTS,
-    [selectedCategory]
-  );
 
   return (
     <div className="px-4 pt-6 pb-24">
@@ -84,89 +76,55 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Category pills */}
+      {/* Error state */}
+      {error && (
+        <div className="p-4 rounded-xl mb-6" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+          <p className="text-sm font-medium">Could not load patterns</p>
+          <p className="text-xs mt-1">{error}</p>
+          <p className="text-xs mt-2">Make sure RAVELRY_USERNAME and RAVELRY_PASSWORD are set in your Vercel environment variables.</p>
+        </div>
+      )}
+
+      {/* Horizontal scroll sections */}
+      {['popularKnitting', 'popularCrochet', 'freePatterns'].map((key) => {
+        const section = sections[key as keyof typeof sections];
+        return (
+          <div key={key} className="mb-6">
+            <SectionHeader title={section.title} href="/search" />
+            {section.loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+              </div>
+            ) : section.patterns.length > 0 ? (
+              <div className="flex gap-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                {section.patterns.map((pattern) => (
+                  <RavelryCardSmall key={pattern.id} pattern={pattern} />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+
+      {/* Trending grid */}
       <div className="mb-6">
-        <CategoryPills selected={selectedCategory} onSelect={setSelectedCategory} />
-      </div>
-
-      {/* Seasonal highlights */}
-      {seasonalProjects.length > 0 && (
-        <div className="mb-6">
-          <SectionHeader title={`${season.emoji} ${season.label}`} />
-          <div
-            className="flex gap-3 overflow-x-auto"
-            style={{ scrollbarWidth: 'none' }}
-          >
-            {seasonalProjects.map((project) => (
-              <ProjectCardSmall key={project.id} project={project} />
-            ))}
+        <SectionHeader title={sections.trending.title} href="/search" count={sections.trending.patterns.length} />
+        {sections.trending.loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
           </div>
-        </div>
-      )}
-
-      {/* Featured projects */}
-      {featuredProjects.length > 0 && (
-        <div className="mb-6">
-          <SectionHeader title="Featured" href="/explore" />
-          <div
-            className="flex gap-3 overflow-x-auto"
-            style={{ scrollbarWidth: 'none' }}
+        ) : (
+          <motion.div
+            className="grid grid-cols-2 gap-3"
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
           >
-            {featuredProjects.map((project) => (
-              <ProjectCardSmall key={project.id} project={project} />
+            {sections.trending.patterns.map((pattern, index) => (
+              <RavelryPatternCard key={pattern.id} pattern={pattern} index={index} />
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Quick & Easy */}
-      {quickProjects.length > 0 && (
-        <div className="mb-6">
-          <SectionHeader title="Quick & Easy" />
-          <div
-            className="flex gap-3 overflow-x-auto"
-            style={{ scrollbarWidth: 'none' }}
-          >
-            {quickProjects.map((project) => (
-              <ProjectCardSmall key={project.id} project={project} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Recently viewed */}
-      {recentlyViewedProjects.length > 0 && (
-        <div className="mb-6">
-          <SectionHeader title="Recently Viewed" />
-          <div
-            className="flex gap-3 overflow-x-auto"
-            style={{ scrollbarWidth: 'none' }}
-          >
-            {recentlyViewedProjects.map((project) => (
-              <ProjectCardSmall key={project.id} project={project} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* All Projects grid */}
-      <div className="mb-6">
-        <SectionHeader title="All Projects" count={allProjects.length} />
-        <motion.div
-          className="grid grid-cols-2 gap-3"
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: {},
-            visible: {
-              transition: { staggerChildren: 0.05 },
-            },
-          }}
-        >
-          {allProjects.map((project, index) => (
-            <ProjectCard key={project.id} project={project} index={index} />
-          ))}
-        </motion.div>
+          </motion.div>
+        )}
       </div>
     </div>
   );
