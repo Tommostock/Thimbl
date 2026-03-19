@@ -7,8 +7,21 @@ import type {
 } from '@/lib/types/pattern';
 
 /**
+ * Clean up excessive whitespace from DROPS page text.
+ * Their HTML has lots of tabs and blank lines.
+ */
+function cleanText(text: string): string {
+  return text
+    .replace(/\t+/g, ' ')
+    .replace(/ {2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^[ ]+/gm, '')
+    .replace(/-{5,}/g, '')
+    .trim();
+}
+
+/**
  * Parse a DROPS Design pattern page HTML into structured content.
- * Falls back gracefully if parsing fails — always returns rawInstructionsHtml.
  */
 export function parseDropsPattern(
   html: string,
@@ -20,57 +33,49 @@ export function parseDropsPattern(
   // --- Title ---
   const title =
     $('h1').first().text().trim() ||
-    $('title').text().replace(' - Free knitting patterns', '').trim();
+    $('title').text().replace(/ - Free .*$/, '').trim();
 
   // --- Images ---
   const images: PatternImage[] = [];
   const seenUrls = new Set<string>();
   $('img').each((_, el) => {
-    const src = $(el).attr('src') || '';
+    let src = $(el).attr('src') || '';
+    if (src.startsWith('//')) src = `https:${src}`;
     if (
       src.includes('images.garnstudio.com/drops/mag') &&
-      !seenUrls.has(src) &&
-      !src.includes('icon') &&
-      !src.includes('logo')
+      !seenUrls.has(src)
     ) {
       seenUrls.add(src);
-      images.push({
-        url: src.startsWith('//') ? `https:${src}` : src,
-        alt: $(el).attr('alt') || title,
-      });
+      images.push({ url: src, alt: $(el).attr('alt') || title });
     }
   });
 
-  // --- Raw pattern text ---
+  // --- Raw pattern text (instructions area) ---
   const patternTextEl = $('#pattern_text');
   const rawInstructionsHtml = patternTextEl.html() || '';
-  const rawText = patternTextEl.text() || $('body').text();
+  const patternText = cleanText(patternTextEl.text());
 
-  // --- Sizes ---
-  const sizes = extractSizes(rawText);
+  // --- Full body text (contains SIZE, YARN, NEEDLES, GAUGE above pattern_text) ---
+  // Use RAW body text for metadata extraction (cleanText can mangle the structure)
+  const rawBodyText = $('body').text();
 
-  // --- Gauge ---
-  const gaugeMatch = rawText.match(
-    /(\d+)\s*(?:stitches?|st|dc).*?(?:and|x)\s*(\d+)\s*rows?.*?=\s*10\s*x\s*10\s*cm/i,
-  );
-  const gaugeBlock = rawText.match(
-    /(?:TENSION|GAUGE|KNITTING TENSION|CROCHET TENSION)[:\s]*([\s\S]*?)(?=\n\s*\n|NEEDLE|HOOK|CROCHET HOOK|YARN|PATTERN|$)/i,
-  );
-  const gauge = gaugeMatch || gaugeBlock
-    ? { description: gaugeBlock ? gaugeBlock[1].trim() : gaugeMatch![0] }
-    : null;
+  // --- Sizes (from raw body text, above pattern_text) ---
+  const sizes = extractSizes(rawBodyText);
 
-  // --- Materials ---
-  const materials = extractMaterials(rawText);
+  // --- Gauge (from raw body text) ---
+  const gauge = extractGauge(rawBodyText);
 
-  // --- Needles / Hooks ---
-  const needles = extractNeedles(rawText);
+  // --- Materials (from raw body text) ---
+  const materials = extractMaterials(rawBodyText);
 
-  // --- Tips ---
-  const tips = extractTips(rawText);
+  // --- Needles / Hooks (from raw body text) ---
+  const needles = extractNeedles(rawBodyText);
 
-  // --- Instruction sections ---
-  const sections = extractSections(rawText);
+  // --- Tips (from pattern_text) ---
+  const tips = extractTips(patternText);
+
+  // --- Instruction sections (from pattern_text, after tips) ---
+  const sections = extractSections(patternText);
 
   return {
     patternId,
@@ -89,130 +94,189 @@ export function parseDropsPattern(
   };
 }
 
+// ---- Extractors ----
+
 function extractSizes(text: string): string[] {
-  // Look for size listings like "S - M - L - XL" or "XS, S, M, L"
-  const sizeMatch = text.match(
-    /(?:SIZE|SIZES?)[:\s]*((?:(?:XS|S|M|L|XL|XXL|XXXL|[0-9/]+(?:\s*(?:years?|months?|cm))?)\s*[-–,]\s*)+(?:XS|S|M|L|XL|XXL|XXXL|[0-9/]+(?:\s*(?:years?|months?|cm))?))/i,
+  // Match the SIZE: line followed by the next line (which has the actual sizes)
+  const sizeMatch = text.match(/SIZE:\s*\n\s*((?:XS|S|M|L|XL|XXL|XXXL|One size|[\d/]+)[^\n]*)/i);
+  if (!sizeMatch) return [];
+
+  const sizeText = sizeMatch[1].trim();
+  // "XS - S - M - L - XL - XXL - XXXL" or "2/4 - 6/8 - 10/12 years"
+  const parts = sizeText.split(/\s*[-–]\s*/).map((s) => s.trim()).filter(Boolean);
+  if (parts.length >= 2) return parts;
+
+  // Single size
+  if (sizeText.toLowerCase().includes('one size')) return ['One size'];
+  return sizeText ? [sizeText] : [];
+}
+
+function extractGauge(text: string): { description: string } | null {
+  const gaugeMatch = text.match(
+    /\n(?:KNITTING TENSION|CROCHET TENSION)[:\s]*\n([\s\S]*?)(?=\n\s*(?:REMEMBER|PATTERN|EXPLANATION|\n\n))/i,
   );
-  if (sizeMatch) {
-    return sizeMatch[1]
-      .split(/\s*[-–,]\s*/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
-  // Fallback: look for common size patterns in the text
-  const commonSizes = text.match(
-    /\b(XS|S|M|L|XL|XXL|XXXL)\s*[-–]\s*(XS|S|M|L|XL|XXL|XXXL)\b/,
-  );
-  if (commonSizes) {
-    const all = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
-    const start = all.indexOf(commonSizes[1]);
-    const end = all.indexOf(commonSizes[2]);
-    if (start >= 0 && end >= start) return all.slice(start, end + 1);
-  }
-  return [];
+  if (!gaugeMatch) return null;
+  const desc = gaugeMatch[1].trim();
+  if (desc.length < 5) return null;
+  const lines = desc.split('\n').filter((l) => l.trim().length > 0);
+  return { description: lines.slice(0, 3).join('\n') };
 }
 
 function extractMaterials(text: string): PatternMaterial[] {
   const materials: PatternMaterial[] = [];
 
-  // Match DROPS yarn names
-  const yarnSection = text.match(
-    /(?:YARN|MATERIALS?)[:\s]*([\s\S]*?)(?=\n\s*(?:NEEDLE|HOOK|CROCHET HOOK|TENSION|GAUGE|KNITTING TIP|PATTERN|$))/i,
+  const yarnMatch = text.match(
+    /\nYARN:\s*\n([\s\S]*?)(?=\n\s*(?:NEEDLES?:|CROCHET HOOK))/i,
   );
-  if (yarnSection) {
-    const block = yarnSection[1];
-    // Split by DROPS yarn name mentions
-    const yarnMatches = block.match(/DROPS\s+[\w\s-]+(?:\([\s\S]*?\))?[^]*?(?=DROPS\s+[\w-]|$)/gi);
-    if (yarnMatches) {
-      for (const match of yarnMatches) {
-        const lines = match.trim();
-        if (lines.length < 5) continue;
-        const nameMatch = lines.match(/^(DROPS\s+[\w\s-]+)/i);
-        materials.push({
-          yarnName: nameMatch ? nameMatch[1].trim() : 'Yarn',
-          details: lines.replace(nameMatch?.[0] ?? '', '').trim(),
-        });
+  if (!yarnMatch) return [];
+
+  const block = yarnMatch[1].trim();
+  // Split by lines, group by DROPS yarn mentions
+  const lines = block.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+
+  let currentName = '';
+  let currentDetails: string[] = [];
+
+  for (const line of lines) {
+    const dropsMatch = line.match(/^(DROPS\s+[\w\s-]+)/i);
+    if (dropsMatch) {
+      // Save previous
+      if (currentName) {
+        materials.push({ yarnName: currentName, details: currentDetails.join('\n') });
       }
+      currentName = dropsMatch[1].trim();
+      const rest = line.replace(dropsMatch[0], '').trim();
+      currentDetails = rest ? [rest] : [];
+    } else {
+      currentDetails.push(line);
     }
-    if (materials.length === 0 && block.trim().length > 5) {
-      materials.push({ yarnName: 'Yarn', details: block.trim().slice(0, 500) });
-    }
+  }
+  // Save last
+  if (currentName) {
+    materials.push({ yarnName: currentName, details: currentDetails.join('\n') });
+  } else if (lines.length > 0) {
+    materials.push({ yarnName: 'Yarn', details: lines.join('\n') });
   }
 
   return materials;
 }
 
 function extractNeedles(text: string): string[] {
-  const needles: string[] = [];
-  const needleSection = text.match(
-    /(?:NEEDLE|HOOK|CROCHET HOOK|KNITTING NEEDLES?)[:\s]*([\s\S]*?)(?=\n\s*(?:TENSION|GAUGE|YARN|PATTERN|KNITTING TIP|CROCHET TIP|$))/i,
+  // Match NEEDLES: or CROCHET HOOK SIZE at the start of a line (not "Yarn & needles" nav text)
+  const needleMatch = text.match(
+    /\nNEEDLES?:\s*\n([\s\S]*?)(?=\n\s*(?:KNITTING TENSION|CROCHET TENSION|TENSION|GAUGE|Accessories|\n\n))/i,
   );
-  if (needleSection) {
-    const lines = needleSection[1]
+  if (needleMatch) {
+    return needleMatch[1]
       .split('\n')
       .map((l) => l.trim())
-      .filter((l) => l.length > 3);
-    needles.push(...lines.slice(0, 8));
+      .filter((l) => l.length > 3 && !l.startsWith('---'));
   }
-  return needles;
+
+  // Try CROCHET HOOK SIZE format
+  const hookMatch = text.match(
+    /\nCROCHET HOOK[^:]*:\s*\n?([\s\S]*?)(?=\n\s*(?:KNITTING TENSION|CROCHET TENSION|TENSION|GAUGE|Accessories|\n\n))/i,
+  );
+  if (hookMatch) {
+    return hookMatch[1]
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 3 && !l.startsWith('---'));
+  }
+
+  return [];
 }
 
-function extractTips(text: string): string[] {
+function extractTips(patternText: string): string[] {
   const tips: string[] = [];
+
+  // Match tip blocks: KNITTING TIP:, CROCHET TIP:, INCREASE TIP:, DECREASE TIP:, CROCHET INFO:, etc.
   const tipRegex =
-    /(?:KNITTING TIP|CROCHET TIP|TIP|NOTE|IMPORTANT)[:\s]*([\s\S]*?)(?=\n\s*(?:KNITTING TIP|CROCHET TIP|TIP|NOTE|FRONT|BACK|BODY|SLEEVE|PATTERN|ROW|ROUND|$))/gi;
+    /(?:KNITTING TIP|CROCHET TIP|CROCHET INFO|INCREASE TIP|DECREASE TIP|MAGIC CIRCLE|WORK IN THE ROUND[^:]*|WORKING \d+ DC TOG)[:\s]*([\s\S]*?)(?=\n\s*(?:KNITTING TIP|CROCHET TIP|CROCHET INFO|INCREASE TIP|DECREASE TIP|MAGIC CIRCLE|WORK IN THE ROUND|WORKING \d+ DC TOG|START THE PIECE|JUMPER|CARDIGAN|SWEATER|BLANKET|SCARF|HAT|CHICKEN|FRONT PIECE|BACK PIECE|BODY|SLEEVE|ASSEMBLY)[:\s]|\n\s*-{3,})/gi;
+
   let match;
-  while ((match = tipRegex.exec(text)) !== null) {
+  while ((match = tipRegex.exec(patternText)) !== null) {
     const tip = match[1].trim();
-    if (tip.length > 10 && tip.length < 2000) {
+    if (tip.length > 15) {
       tips.push(tip);
     }
   }
   return tips;
 }
 
-function extractSections(text: string): PatternSection[] {
+function extractSections(patternText: string): PatternSection[] {
   const sections: PatternSection[] = [];
 
-  // Common section headings in DROPS patterns (all-caps, sometimes with colon)
-  const sectionRegex =
-    /\n\s*((?:FRONT PIECE|BACK PIECE|BODY|SLEEVE|SLEEVES|LEFT SLEEVE|RIGHT SLEEVE|ASSEMBLY|FINISHING|NECKBAND|NECK|COLLAR|POCKET|POCKETS|HOOD|BORDER|RIBBING|HEM|WAISTBAND|YOKE|SHOULDER|ARMHOLE|INCREASE FOR ARMHOLES?|WINGS?|BEAK|LEGS?|COCKSCOMB|HEAD|TAIL|EARS?|ARMS?|FEET|FOOT|SOLE|TOE|HEEL|CUFF|THUMB|FINGERS?|MAIN BODY|UPPER BODY|LOWER BODY|SKIRT|TOP|BOTTOM|FRONT|BACK|SIDE|PANEL|MOTIF|CHART|DIAGRAM|GUSSET|DECREASE|BUTTON BAND|BUTTONHOLE BAND|FLAP|STRAP|HANDLE|BASE|LID|CHICKEN BODY|ROUND [0-9]+))[:\s]*([\s\S]*?)(?=\n\s*(?:FRONT PIECE|BACK PIECE|BODY|SLEEVE|SLEEVES|LEFT SLEEVE|RIGHT SLEEVE|ASSEMBLY|FINISHING|NECKBAND|NECK|COLLAR|POCKET|POCKETS|HOOD|BORDER|RIBBING|HEM|WAISTBAND|YOKE|SHOULDER|ARMHOLE|INCREASE FOR ARMHOLES?|WINGS?|BEAK|LEGS?|COCKSCOMB|HEAD|TAIL|EARS?|ARMS?|FEET|FOOT|SOLE|TOE|HEEL|CUFF|THUMB|FINGERS?|MAIN BODY|UPPER BODY|LOWER BODY|SKIRT|TOP|BOTTOM|FRONT|BACK|SIDE|PANEL|MOTIF|CHART|DIAGRAM|GUSSET|DECREASE|BUTTON BAND|BUTTONHOLE BAND|FLAP|STRAP|HANDLE|BASE|LID|CHICKEN BODY)[:\s]|$)/gi;
+  // Find the "START THE PIECE HERE" marker or the first major section heading
+  const startMarker = patternText.search(
+    /(?:START THE PIECE|JUMPER|CARDIGAN|SWEATER|SCARF|HAT|BLANKET|CHICKEN|FRONT PIECE|BACK PIECE|BODY|SLEEVE)/i,
+  );
+  if (startMarker < 0 && !patternText.match(/ROUND 1|ROW 1/i)) {
+    // No recognizable sections — return entire pattern text as one section
+    if (patternText.length > 50) {
+      sections.push({ heading: 'Pattern Instructions', content: patternText, order: 0 });
+    }
+    return sections;
+  }
 
-  let match;
-  let order = 0;
-  while ((match = sectionRegex.exec(text)) !== null) {
-    const heading = match[1].trim();
-    const content = match[2].trim();
-    if (content.length > 10) {
-      sections.push({ heading, content, order: order++ });
+  // Get text from start marker onwards
+  const instructionText = startMarker >= 0 ? patternText.slice(startMarker) : patternText;
+
+  // Split by lines that look like section headings (ALL CAPS followed by colon or newline)
+  const headingRegex =
+    /^([A-Z][A-Z\s]+(?:PIECE|ARMHOLES?|SLEEVE|SLEEVES|BODY|ASSEMBLY|FINISHING|NECKBAND|BORDER|RIBBING|OVERVIEW|COLLAR|POCKET|HOOD|YOKE|CHICKEN|WINGS?|BEAK|LEGS?|COCKSCOMB|ROUND|CAP|STITCHES|TURN)[A-Z\s]*)[:\s]*$/gm;
+
+  const headings: { heading: string; index: number }[] = [];
+  let m;
+  while ((m = headingRegex.exec(instructionText)) !== null) {
+    headings.push({ heading: m[1].trim(), index: m.index });
+  }
+
+  // Also try a simpler approach: lines that are entirely uppercase, > 4 chars, contain letter
+  if (headings.length === 0) {
+    const lines = instructionText.split('\n');
+    let offset = 0;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (
+        trimmed.length > 4 &&
+        trimmed === trimmed.toUpperCase() &&
+        /[A-Z]{2,}/.test(trimmed) &&
+        !trimmed.startsWith('ROW') &&
+        !trimmed.startsWith('ROUND') &&
+        !trimmed.startsWith('---') &&
+        !trimmed.startsWith('NOTE') &&
+        !trimmed.startsWith('REMEMBER')
+      ) {
+        headings.push({ heading: trimmed.replace(/:$/, ''), index: offset });
+      }
+      offset += line.length + 1;
     }
   }
 
-  // Fallback: if no sections found, look for ROW/ROUND-based content
-  if (sections.length === 0) {
-    const rowContent = text.match(
-      /(?:ROW|ROUND)\s+1[\s\S]*$/i,
-    );
-    if (rowContent) {
+  if (headings.length === 0) {
+    // Last resort — just put everything as one section
+    if (instructionText.length > 50) {
       sections.push({
-        heading: 'Instructions',
-        content: rowContent[0].trim().slice(0, 10000),
+        heading: 'Pattern Instructions',
+        content: instructionText.trim(),
         order: 0,
       });
     }
+    return sections;
   }
 
-  // Final fallback: use the main block of text after materials/gauge
-  if (sections.length === 0) {
-    const afterSetup = text.match(
-      /(?:TENSION|GAUGE|NEEDLE|HOOK)[\s\S]*?\n\n([\s\S]+)/i,
-    );
-    if (afterSetup && afterSetup[1].trim().length > 50) {
+  // Extract content between headings
+  for (let i = 0; i < headings.length; i++) {
+    const start = headings[i].index + headings[i].heading.length + 1;
+    const end = i + 1 < headings.length ? headings[i + 1].index : instructionText.length;
+    const content = instructionText.slice(start, end).trim();
+
+    if (content.length > 10) {
       sections.push({
-        heading: 'Pattern Instructions',
-        content: afterSetup[1].trim().slice(0, 10000),
-        order: 0,
+        heading: headings[i].heading,
+        content,
+        order: i,
       });
     }
   }
