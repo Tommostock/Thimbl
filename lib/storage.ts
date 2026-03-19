@@ -138,53 +138,6 @@ export function updateUserProject(id: string, updates: Partial<UserProject>): vo
 }
 
 // -------------------------------------------------------
-// Shopping List
-// -------------------------------------------------------
-
-export function getShoppingList(): ShoppingListItem[] {
-  return getStorage().shoppingList;
-}
-
-export function saveShoppingItem(item: ShoppingListItem): void {
-  const { shoppingList } = getStorage();
-  shoppingList.unshift(item);
-  setStorage({ shoppingList });
-}
-
-export function updateShoppingItem(id: string, updates: Partial<ShoppingListItem>): void {
-  const { shoppingList } = getStorage();
-  const idx = shoppingList.findIndex((i) => i.id === id);
-  if (idx >= 0) {
-    shoppingList[idx] = { ...shoppingList[idx], ...updates };
-    setStorage({ shoppingList });
-  }
-}
-
-export function deleteShoppingItem(id: string): void {
-  const { shoppingList } = getStorage();
-  setStorage({ shoppingList: shoppingList.filter((i) => i.id !== id) });
-}
-
-// -------------------------------------------------------
-// Photos
-// -------------------------------------------------------
-
-export function getPhotosForProject(userProjectId: string): StoredPhoto[] {
-  return getStorage().userPhotos.filter((p) => p.user_project_id === userProjectId);
-}
-
-export function savePhoto(photo: StoredPhoto): void {
-  const { userPhotos } = getStorage();
-  userPhotos.unshift(photo);
-  setStorage({ userPhotos });
-}
-
-export function deletePhoto(id: string): void {
-  const { userPhotos } = getStorage();
-  setStorage({ userPhotos: userPhotos.filter((p) => p.id !== id) });
-}
-
-// -------------------------------------------------------
 // Achievements
 // -------------------------------------------------------
 

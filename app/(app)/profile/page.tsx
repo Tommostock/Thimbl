@@ -7,12 +7,10 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStorage } from '@/lib/storage';
 import { getLevelForXP, CATEGORIES } from '@/lib/constants';
-import { PROJECTS, ACHIEVEMENTS } from '@/lib/data';
-import { getSkillsByCategory, getSkillsByDifficulty } from '@/lib/skills';
+import { ACHIEVEMENTS } from '@/lib/data';
 import type { StoredStats, StoredProfile } from '@/lib/storage';
-import type { UserProject, JournalEntry } from '@/lib/types/database';
+import type { JournalEntry } from '@/lib/types/database';
 import SectionHeader from '@/components/home/SectionHeader';
-import SkillProgressCard from '@/components/profile/SkillProgressCard';
 import BadgeGrid from '@/components/profile/BadgeGrid';
 
 /**
@@ -27,7 +25,6 @@ export default function ProfilePage() {
   const { user, signOut } = useAuth();
   const [stats, setStats] = useState<StoredStats | null>(null);
   const [profile, setProfile] = useState<StoredProfile | null>(null);
-  const [userProjects, setUserProjects] = useState<UserProject[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
@@ -36,7 +33,6 @@ export default function ProfilePage() {
     const storage = getStorage();
     setStats(storage.userStats);
     setProfile(storage.profile);
-    setUserProjects(storage.userProjects);
     setFavorites(storage.favorites);
     setJournalEntries(storage.journalEntries);
     setUnlockedIds(storage.unlockedAchievements);
@@ -52,9 +48,6 @@ export default function ProfilePage() {
   const favouriteCategory = CATEGORIES.find(
     (c) => c.key === (profile?.favourite_category ?? user?.favourite_category)
   );
-
-  const categorySkills = getSkillsByCategory(userProjects, PROJECTS);
-  const difficultySkills = getSkillsByDifficulty(userProjects, PROJECTS);
 
   // Crafting Journey stats
   const uniqueProjects = new Set(journalEntries.map((e) => e.projectId)).size;
@@ -155,8 +148,6 @@ export default function ProfilePage() {
         transition={{ delay: 0.1 }}
       >
         {[
-          { label: 'Total Projects', value: PROJECTS.length },
-          { label: 'My Projects', value: userProjects.length },
           { label: 'Favourites', value: favorites.length },
           { label: 'Journal Entries', value: journalEntries.length },
         ].map((stat) => (
@@ -233,53 +224,7 @@ export default function ProfilePage() {
         <BadgeGrid achievements={ACHIEVEMENTS} unlockedIds={unlockedIds} />
       </motion.div>
 
-      {/* 6. Skills by Category */}
-      <motion.div
-        className="mb-6"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
-      >
-        <SectionHeader title="Skills by Category" />
-        <div className="flex flex-col gap-2">
-          {categorySkills.map((skill) => (
-            <SkillProgressCard
-              key={skill.key}
-              label={skill.label}
-              emoji={skill.emoji}
-              completed={skill.completed}
-              total={skill.total}
-              percentage={skill.percentage}
-              colour={skill.colour}
-            />
-          ))}
-        </div>
-      </motion.div>
-
-      {/* 7. Skills by Difficulty */}
-      <motion.div
-        className="mb-6"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        <SectionHeader title="Skills by Difficulty" />
-        <div className="flex flex-col gap-2">
-          {difficultySkills.map((skill) => (
-            <SkillProgressCard
-              key={skill.key}
-              label={skill.label}
-              emoji={skill.emoji}
-              completed={skill.completed}
-              total={skill.total}
-              percentage={skill.percentage}
-              colour={skill.colour}
-            />
-          ))}
-        </div>
-      </motion.div>
-
-      {/* 8. Settings */}
+      {/* 6. Settings */}
       <motion.div
         className="rounded-xl overflow-hidden"
         style={{ backgroundColor: 'var(--bg-secondary)' }}

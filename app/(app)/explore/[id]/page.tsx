@@ -35,7 +35,6 @@ import PatternSkeleton from '@/components/pattern/PatternSkeleton';
 import MaterialsList from '@/components/pattern/MaterialsList';
 import PatternInstructions from '@/components/pattern/PatternInstructions';
 import PatternTips from '@/components/pattern/PatternTips';
-import Timer from '@/components/project/Timer';
 import type { ProjectNote } from '@/lib/types/database';
 
 const craftBadgeColour: Record<string, string> = {
@@ -388,10 +387,6 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
           ))}
         </div>
 
-        {/* Timer */}
-        <div className="mb-5">
-          <Timer />
-        </div>
       </div>
     </div>
   );
