@@ -2,33 +2,44 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Moon, LogOut, Award, Layers } from 'lucide-react';
+import { Sun, Moon, BookOpen, Layers, Star } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStorage } from '@/lib/storage';
-import { getLevelForXP } from '@/lib/constants';
-import type { StoredStats } from '@/lib/storage';
+import { getLevelForXP, CATEGORIES } from '@/lib/constants';
+import { PROJECTS, ACHIEVEMENTS } from '@/lib/data';
+import { getSkillsByCategory, getSkillsByDifficulty } from '@/lib/skills';
+import type { StoredStats, StoredProfile } from '@/lib/storage';
+import type { UserProject, JournalEntry } from '@/lib/types/database';
+import SectionHeader from '@/components/home/SectionHeader';
+import SkillProgressCard from '@/components/profile/SkillProgressCard';
+import BadgeGrid from '@/components/profile/BadgeGrid';
 
 /**
  * Profile Page
  *
- * Shows the user's name, level, stats, and settings.
- * All data sourced from localStorage.
+ * Comprehensive profile with about card, crafter level, stats,
+ * crafting journey, achievements, skills, and settings.
  */
 
 export default function ProfilePage() {
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   const [stats, setStats] = useState<StoredStats | null>(null);
-  const [projectCounts, setProjectCounts] = useState({ total: 0, completed: 0 });
+  const [profile, setProfile] = useState<StoredProfile | null>(null);
+  const [userProjects, setUserProjects] = useState<UserProject[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const { userStats, userProjects } = getStorage();
-    setStats(userStats);
-    setProjectCounts({
-      total: userProjects.length,
-      completed: userProjects.filter((p) => p.status === 'completed').length,
-    });
+    const storage = getStorage();
+    setStats(storage.userStats);
+    setProfile(storage.profile);
+    setUserProjects(storage.userProjects);
+    setFavorites(storage.favorites);
+    setJournalEntries(storage.journalEntries);
+    setUnlockedIds(storage.unlockedAchievements);
   }, []);
 
   const totalXP = stats?.total_xp ?? 0;
@@ -38,8 +49,29 @@ export default function ProfilePage() {
   const neededXP = nextLevel ? nextLevel.minXP - level.minXP : 1;
   const progress = nextLevel ? Math.min((progressXP / neededXP) * 100, 100) : 100;
 
+  const favouriteCategory = CATEGORIES.find(
+    (c) => c.key === (profile?.favourite_category ?? user?.favourite_category)
+  );
+
+  const categorySkills = getSkillsByCategory(userProjects, PROJECTS);
+  const difficultySkills = getSkillsByDifficulty(userProjects, PROJECTS);
+
+  // Crafting Journey stats
+  const uniqueProjects = new Set(journalEntries.map((e) => e.projectId)).size;
+  const avgRating =
+    journalEntries.length > 0
+      ? (journalEntries.reduce((sum, e) => sum + e.rating, 0) / journalEntries.length).toFixed(1)
+      : '0';
+
+  const handleReset = () => {
+    if (window.confirm('Are you sure you want to reset all your progress? This cannot be undone.')) {
+      signOut();
+    }
+  };
+
   return (
-    <div className="px-4 pt-6 pb-4">
+    <div className="px-4 pt-6 pb-24">
+      {/* Page title */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <h1
           className="text-2xl font-bold mb-5"
@@ -49,84 +81,94 @@ export default function ProfilePage() {
         </h1>
       </motion.div>
 
-      {/* Avatar + name */}
+      {/* 1. About card */}
       <motion.div
-        className="card p-5 mb-4 flex items-center gap-4"
+        className="rounded-xl p-4 mb-6 flex items-center gap-4"
+        style={{ backgroundColor: 'var(--bg-secondary)' }}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0"
+          className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-white shrink-0"
           style={{ backgroundColor: 'var(--accent-primary)' }}
         >
-          🧵
+          {(user?.display_name ?? 'C')[0].toUpperCase()}
         </div>
         <div>
-          <h2 className="text-xl font-bold" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}>
+          <h2
+            className="text-lg font-bold"
+            style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
+          >
             {user?.display_name ?? 'Crafter'}
           </h2>
-          <span
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full mt-1"
-            style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
-          >
-            <Award size={12} />
-            {level.name}
-          </span>
+          {favouriteCategory && (
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {favouriteCategory.emoji} {favouriteCategory.label}
+            </p>
+          )}
         </div>
       </motion.div>
 
-      {/* XP bar */}
-      {stats && (
-        <motion.div
-          className="card p-4 mb-4"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              {level.name}
-              {nextLevel && (
-                <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
-                  → {nextLevel.name}
-                </span>
-              )}
-            </span>
-            <span className="text-sm font-bold" style={{ color: 'var(--accent-primary)' }}>
-              {totalXP} XP
-            </span>
-          </div>
-          <div className="h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-            <motion.div
-              className="h-full rounded-full"
-              style={{ backgroundColor: 'var(--accent-primary)' }}
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-            />
-          </div>
-          {nextLevel && (
-            <p className="text-xs mt-1.5 text-right" style={{ color: 'var(--text-muted)' }}>
-              {nextLevel.minXP - totalXP} XP to {nextLevel.name}
-            </p>
-          )}
-        </motion.div>
-      )}
-
-      {/* Stats */}
+      {/* 2. Crafter Level card */}
       <motion.div
-        className="grid grid-cols-3 gap-3 mb-4"
+        className="rounded-xl p-5 mb-6 text-white"
+        style={{
+          background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-tertiary))',
+        }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3
+            className="text-xl font-bold"
+            style={{ fontFamily: 'var(--font-heading)' }}
+          >
+            {level.name}
+          </h3>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/20">
+            Lvl {level.index + 1}
+          </span>
+        </div>
+        <div className="h-2.5 rounded-full overflow-hidden bg-white/20">
+          <motion.div
+            className="h-full rounded-full bg-white"
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+          />
+        </div>
+        {nextLevel ? (
+          <p className="text-sm mt-2 opacity-80">
+            {progressXP} / {neededXP} XP to next level
+          </p>
+        ) : (
+          <p className="text-sm mt-2 opacity-80">Max level reached!</p>
+        )}
+      </motion.div>
+
+      {/* 3. Stats grid */}
+      <motion.div
+        className="grid grid-cols-2 gap-3 mb-6"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
         {[
-          { label: 'Projects', value: projectCounts.total },
-          { label: 'Completed', value: projectCounts.completed },
-          { label: 'Streak', value: `${stats?.current_streak ?? 0}d` },
+          { label: 'Total Projects', value: PROJECTS.length },
+          { label: 'My Projects', value: userProjects.length },
+          { label: 'Favourites', value: favorites.length },
+          { label: 'Journal Entries', value: journalEntries.length },
         ].map((stat) => (
-          <div key={stat.label} className="card p-3 text-center">
-            <p className="text-xl font-bold" style={{ color: 'var(--accent-primary)' }}>
+          <div
+            key={stat.label}
+            className="rounded-xl p-4 text-center"
+            style={{ backgroundColor: 'var(--bg-secondary)' }}
+          >
+            <p
+              className="text-2xl font-bold"
+              style={{ color: 'var(--accent-primary)' }}
+            >
               {stat.value}
             </p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -136,51 +178,150 @@ export default function ProfilePage() {
         ))}
       </motion.div>
 
-      {/* Settings */}
+      {/* 4. Crafting Journey */}
+      {journalEntries.length > 0 && (
+        <motion.div
+          className="mb-6"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <SectionHeader title="Crafting Journey" />
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Total Sessions', value: journalEntries.length, icon: BookOpen },
+              { label: 'Unique Projects', value: uniqueProjects, icon: Layers },
+              { label: 'Avg Rating', value: avgRating, icon: Star },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-xl p-3 text-center"
+                style={{ backgroundColor: 'var(--bg-secondary)' }}
+              >
+                <stat.icon
+                  size={16}
+                  className="mx-auto mb-1"
+                  style={{ color: 'var(--accent-primary)' }}
+                />
+                <p
+                  className="text-lg font-bold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {stat.value}
+                </p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {stat.label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* 5. Achievements */}
       <motion.div
-        className="card divide-y"
+        className="mb-6"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        style={{ borderColor: 'var(--border-colour-light)' }}
+        transition={{ delay: 0.2 }}
       >
-        {/* Theme toggle */}
+        <SectionHeader
+          title="Achievements"
+          href="/achievements"
+          count={unlockedIds.length}
+        />
+        <BadgeGrid achievements={ACHIEVEMENTS} unlockedIds={unlockedIds} />
+      </motion.div>
+
+      {/* 6. Skills by Category */}
+      <motion.div
+        className="mb-6"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+      >
+        <SectionHeader title="Skills by Category" />
+        <div className="flex flex-col gap-2">
+          {categorySkills.map((skill) => (
+            <SkillProgressCard
+              key={skill.key}
+              label={skill.label}
+              emoji={skill.emoji}
+              completed={skill.completed}
+              total={skill.total}
+              percentage={skill.percentage}
+              colour={skill.colour}
+            />
+          ))}
+        </div>
+      </motion.div>
+
+      {/* 7. Skills by Difficulty */}
+      <motion.div
+        className="mb-6"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <SectionHeader title="Skills by Difficulty" />
+        <div className="flex flex-col gap-2">
+          {difficultySkills.map((skill) => (
+            <SkillProgressCard
+              key={skill.key}
+              label={skill.label}
+              emoji={skill.emoji}
+              completed={skill.completed}
+              total={skill.total}
+              percentage={skill.percentage}
+              colour={skill.colour}
+            />
+          ))}
+        </div>
+      </motion.div>
+
+      {/* 8. Settings */}
+      <motion.div
+        className="rounded-xl overflow-hidden"
+        style={{ backgroundColor: 'var(--bg-secondary)' }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+      >
+        {/* Dark mode toggle */}
         <button
           onClick={toggleTheme}
-          className="w-full flex items-center justify-between p-4 min-h-[52px]"
+          className="w-full flex items-center justify-between p-4"
+          style={{ borderBottom: '1px solid var(--border-colour)' }}
         >
-          <div className="flex items-center gap-3">
-            {theme === 'dark' ? (
-              <Sun size={20} style={{ color: 'var(--accent-primary)' }} />
-            ) : (
-              <Moon size={20} style={{ color: 'var(--accent-primary)' }} />
-            )}
-            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              {theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            </span>
+          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+            Dark Mode
+          </span>
+          <div
+            className="w-10 h-6 rounded-full flex items-center px-1 transition-colors"
+            style={{
+              backgroundColor: theme === 'dark' ? 'var(--accent-primary)' : 'var(--border-colour)',
+            }}
+          >
+            <motion.div
+              className="w-4 h-4 rounded-full bg-white flex items-center justify-center"
+              animate={{ x: theme === 'dark' ? 16 : 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            >
+              {theme === 'dark' ? (
+                <Moon size={10} className="text-gray-600" />
+              ) : (
+                <Sun size={10} className="text-yellow-500" />
+              )}
+            </motion.div>
           </div>
         </button>
 
-        {/* Achievements link */}
-        <a
-          href="/achievements"
-          className="w-full flex items-center justify-between p-4 min-h-[52px]"
-        >
-          <div className="flex items-center gap-3">
-            <Layers size={20} style={{ color: 'var(--accent-primary)' }} />
-            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              View Achievements
-            </span>
-          </div>
-        </a>
-
-        {/* Sign out / reset */}
+        {/* Reset button */}
         <button
-          onClick={signOut}
-          className="w-full flex items-center gap-3 p-4 min-h-[52px]"
+          onClick={handleReset}
+          className="w-full p-4 text-left"
         >
-          <LogOut size={20} style={{ color: 'var(--text-muted)' }} />
-          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          <span className="text-sm font-medium text-red-500">
             Reset & Start Over
           </span>
         </button>

@@ -2,22 +2,22 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Compass, Scissors, ShoppingBag, User } from 'lucide-react';
+import { Home, Search, Heart, BookOpen, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 /**
  * Bottom Navigation Bar
  *
  * Fixed to the bottom of the screen on mobile.
- * Five tabs: Home, Explore, My Projects, Shopping, Profile.
+ * Five tabs: Home, Search, Favorites, Journal, Profile.
  * Minimum 44px tap targets for accessibility.
  */
 
 const navItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
-  { href: '/explore', label: 'Explore', icon: Compass },
-  { href: '/my-projects', label: 'Projects', icon: Scissors },
-  { href: '/shopping-list', label: 'Shopping', icon: ShoppingBag },
+  { href: '/search', label: 'Search', icon: Search },
+  { href: '/favorites', label: 'Favourites', icon: Heart },
+  { href: '/journal', label: 'Journal', icon: BookOpen },
   { href: '/profile', label: 'Profile', icon: User },
 ];
 

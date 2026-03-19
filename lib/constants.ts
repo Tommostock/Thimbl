@@ -17,19 +17,29 @@ export const XP_REWARDS = {
   RATE_PROJECT: 5,
   LOG_TIME_PER_HOUR: 5,
   STREAK_7_DAY: 100,
+  ADD_FAVORITE: 2,
+  ADD_JOURNAL_ENTRY: 15,
+  SHARE_PROJECT: 5,
+  COMPLETE_CRAFT_MODE: 10,
 } as const;
 
 // ============================================
-// Level Thresholds
+// Level Thresholds (12 levels, matching BakeBook)
 // ============================================
 
 export const LEVELS = [
   { name: 'Apprentice', minXP: 0 },
-  { name: 'Hobbyist', minXP: 100 },
+  { name: 'Novice', minXP: 50 },
+  { name: 'Hobbyist', minXP: 150 },
   { name: 'Crafter', minXP: 300 },
-  { name: 'Artisan', minXP: 600 },
-  { name: 'Master Maker', minXP: 1000 },
-  { name: 'Textile Legend', minXP: 2000 },
+  { name: 'Artisan', minXP: 500 },
+  { name: 'Journeyman', minXP: 800 },
+  { name: 'Expert', minXP: 1200 },
+  { name: 'Master', minXP: 1800 },
+  { name: 'Virtuoso', minXP: 2500 },
+  { name: 'Grand Master', minXP: 3500 },
+  { name: 'Textile Legend', minXP: 5000 },
+  { name: 'Craft Sage', minXP: 7500 },
 ] as const;
 
 /**
@@ -37,7 +47,6 @@ export const LEVELS = [
  * Returns the level object with name and minXP.
  */
 export function getLevelForXP(xp: number) {
-  // Walk backwards through the levels to find the highest one the user qualifies for
   for (let i = LEVELS.length - 1; i >= 0; i--) {
     if (xp >= LEVELS[i].minXP) {
       return {
@@ -74,3 +83,27 @@ export const DIFFICULTIES = [
 ] as const;
 
 export type Difficulty = (typeof DIFFICULTIES)[number]['key'];
+
+// ============================================
+// Seasonal Configuration
+// ============================================
+
+export const SEASONAL_CONFIG = {
+  winter: { months: [12, 1, 2], label: 'Winter Crafts', emoji: '❄️' },
+  spring: { months: [3, 4, 5], label: 'Spring Crafts', emoji: '🌸' },
+  summer: { months: [6, 7, 8], label: 'Summer Crafts', emoji: '☀️' },
+  autumn: { months: [9, 10, 11], label: 'Autumn Crafts', emoji: '🍂' },
+} as const;
+
+export type Season = keyof typeof SEASONAL_CONFIG;
+
+// ============================================
+// Favorites Sort Options
+// ============================================
+
+export const SORT_OPTIONS = [
+  { key: 'recent', label: 'Recently Added' },
+  { key: 'name', label: 'Name' },
+  { key: 'difficulty', label: 'Difficulty' },
+  { key: 'time', label: 'Time' },
+] as const;

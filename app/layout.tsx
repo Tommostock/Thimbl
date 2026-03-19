@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Playfair_Display, Source_Sans_3 } from 'next/font/google';
+import { Playfair_Display, Source_Sans_3, Dancing_Script } from 'next/font/google';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import ServiceWorkerRegistration from '@/components/layout/ServiceWorkerRegistration';
@@ -24,6 +24,13 @@ const playfair = Playfair_Display({
 const sourceSans = Source_Sans_3({
   subsets: ['latin'],
   variable: '--font-body',
+  display: 'swap',
+});
+
+// Brand font — calligraphy for the "Thimbl" logo
+const dancingScript = Dancing_Script({
+  subsets: ['latin'],
+  variable: '--font-brand',
   display: 'swap',
 });
 
@@ -56,7 +63,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${sourceSans.variable}`}>
+    <html lang="en" className={`${playfair.variable} ${sourceSans.variable} ${dancingScript.variable}`}>
       <head>
         {/* PWA iOS icons */}
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />

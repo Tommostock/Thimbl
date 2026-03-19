@@ -15,7 +15,8 @@ import type { Achievement, AchievementCriteria } from '@/lib/types/database';
 
 export function useAchievements() {
   const checkAchievements = useCallback((): Achievement[] => {
-    const { userProjects, userPhotos, userStats } = getStorage();
+    const storage = getStorage();
+    const { userProjects, userPhotos, userStats, journalEntries, favorites } = storage;
     const unlockedIds = new Set(getUnlockedAchievements());
     const newlyUnlocked: Achievement[] = [];
 
@@ -49,6 +50,10 @@ export function useAchievements() {
       categoriesWithCompletions: Object.keys(categoryCompletedCounts).length,
       hasFiveStar,
       hasFastCompletion,
+      journalEntryCount: (journalEntries ?? []).length,
+      favoritesCount: (favorites ?? []).length,
+      craftModeSessions: userStats.craft_mode_sessions ?? 0,
+      projectsShared: userStats.projects_shared ?? 0,
     };
 
     for (const achievement of ACHIEVEMENTS) {
@@ -82,6 +87,10 @@ interface EvalContext {
   categoriesWithCompletions: number;
   hasFiveStar: boolean;
   hasFastCompletion: boolean;
+  journalEntryCount: number;
+  favoritesCount: number;
+  craftModeSessions: number;
+  projectsShared: number;
 }
 
 function evaluateCriteria(criteria: AchievementCriteria, ctx: EvalContext): boolean {
@@ -97,6 +106,10 @@ function evaluateCriteria(criteria: AchievementCriteria, ctx: EvalContext): bool
     case 'fast_completion': return ctx.hasFastCompletion;
     case 'all_categories': return ctx.categoriesWithCompletions >= count;
     case 'category_all_complete': return Object.values(ctx.categoryCompletedCounts).some((c) => c >= 10);
+    case 'journal_entries': return ctx.journalEntryCount >= count;
+    case 'favorites_count': return ctx.favoritesCount >= count;
+    case 'craft_mode_sessions': return ctx.craftModeSessions >= count;
+    case 'projects_shared': return ctx.projectsShared >= count;
     default: return false;
   }
 }

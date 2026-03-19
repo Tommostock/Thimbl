@@ -31,6 +31,7 @@ export const PROJECTS: Project[] = [
     tips: 'Press all seams as you go — it makes a huge difference to the finished look. Choose a medium-weight canvas for structure. You can add a pocket to the inside before sewing the pieces together.',
     cost_estimate: '£10 - £18',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['practical', 'accessories'],
   },
   {
     id: 'project-002',
@@ -56,6 +57,7 @@ export const PROJECTS: Project[] = [
     tips: 'Choose a fabric that complements your room. Wash and press your fabric before cutting to prevent shrinkage later.',
     cost_estimate: '£8 - £15',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['home-decor', 'practical', 'cosy'],
   },
   {
     id: 'project-003',
@@ -82,6 +84,8 @@ export const PROJECTS: Project[] = [
     tips: 'A lightweight cotton or viscose drapes beautifully for this style. Add pockets by inserting them into the side seam before closing it.',
     cost_estimate: '£12 - £17',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['wearable', 'fashion'],
+    seasonalTags: ['spring', 'summer'],
   },
   {
     id: 'project-004',
@@ -107,6 +111,7 @@ export const PROJECTS: Project[] = [
     tips: 'Use contrasting fabric for the inside for a pop of colour when the pouch is open.',
     cost_estimate: '£4 - £8',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['quick', 'accessories', 'gift'],
   },
   {
     id: 'project-005',
@@ -132,6 +137,7 @@ export const PROJECTS: Project[] = [
     tips: 'Pre-wash cotton fabric to prevent shrinkage. Linen-cotton blends work beautifully for aprons — they soften with every wash.',
     cost_estimate: '£10 - £14',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['practical', 'home-decor'],
   },
   {
     id: 'project-006',
@@ -158,6 +164,9 @@ export const PROJECTS: Project[] = [
     tips: 'Accuracy is key in patchwork — a consistent seam allowance makes everything line up. Use a scant 0.7cm seam for best results.',
     cost_estimate: '£15 - £37',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['home-decor', 'geometric', 'cosy'],
+    isFeatured: true,
+    seasonalTags: ['winter', 'autumn'],
   },
   {
     id: 'project-007',
@@ -183,6 +192,7 @@ export const PROJECTS: Project[] = [
     tips: 'Use a zipper foot on your machine for neat stitching close to the zip teeth. A contrasting lining adds a lovely surprise when you open the pouch.',
     cost_estimate: '£6 - £11',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['accessories', 'quick', 'gift'],
   },
   {
     id: 'project-008',
@@ -208,6 +218,7 @@ export const PROJECTS: Project[] = [
     tips: 'Satin, velvet, and cotton all make gorgeous scrunchies. Make several in different fabrics to match your outfits!',
     cost_estimate: '£1 - £5',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['quick', 'accessories', 'fashion'],
   },
   {
     id: 'project-009',
@@ -235,6 +246,8 @@ export const PROJECTS: Project[] = [
     tips: 'Add stiffness to the brim with interfacing or starching. This hat looks great in denim, canvas, or printed cotton.',
     cost_estimate: '£12 - £18',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['wearable', 'fashion', 'accessories'],
+    seasonalTags: ['summer', 'spring'],
   },
   {
     id: 'project-010',
@@ -259,6 +272,7 @@ export const PROJECTS: Project[] = [
     tips: 'Use coordinating prints from the same fabric range for a cohesive set. These make lovely gifts!',
     cost_estimate: '£3 - £7',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['home-decor', 'quick', 'gift'],
   },
 
   // ============================================
@@ -288,6 +302,9 @@ export const PROJECTS: Project[] = [
     tips: 'Choose a light-coloured yarn so you can see your stitches clearly while learning. Chunky yarn knits up quickly, which keeps you motivated!',
     cost_estimate: '£10 - £14',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['wearable', 'cosy', 'quick'],
+    isFeatured: true,
+    seasonalTags: ['winter', 'autumn'],
   },
   {
     id: 'project-012',
@@ -315,6 +332,8 @@ export const PROJECTS: Project[] = [
     tips: "Try your beanie on as you go to check the length before decreasing. Everyone's head is different! Superwash wool is great because you can machine wash the finished hat.",
     cost_estimate: '£12 - £18',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['wearable', 'cosy', 'accessories'],
+    seasonalTags: ['winter', 'autumn'],
   },
   {
     id: 'project-013',
@@ -339,6 +358,7 @@ export const PROJECTS: Project[] = [
     tips: '100% cotton yarn is essential for dishcloths — it absorbs water beautifully and gets better with use. Make a stack in different colours!',
     cost_estimate: '£3 - £7',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['practical', 'quick', 'home-decor'],
   },
   {
     id: 'project-014',
@@ -364,6 +384,7 @@ export const PROJECTS: Project[] = [
     tips: 'Choose a machine-washable yarn for baby items — parents will thank you! Block the blanket after finishing for a professional look.',
     cost_estimate: '£16 - £23',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['baby', 'gift', 'cosy'],
   },
   {
     id: 'project-015',
@@ -392,6 +413,8 @@ export const PROJECTS: Project[] = [
     tips: "Try them on as you go! The beauty of fingerless gloves is that the fit doesn't need to be as precise as full gloves.",
     cost_estimate: '£5 - £11',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['wearable', 'cosy', 'accessories'],
+    seasonalTags: ['winter', 'autumn'],
   },
   {
     id: 'project-016',
@@ -418,6 +441,8 @@ export const PROJECTS: Project[] = [
     tips: "Cable crossings are just rearranging stitches — once you get the rhythm, it's addictive! A cable needle is helpful but you can also just pinch the stitches.",
     cost_estimate: '£5 - £13',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['wearable', 'fashion', 'accessories'],
+    seasonalTags: ['winter', 'autumn'],
   },
   {
     id: 'project-017',
@@ -445,6 +470,8 @@ export const PROJECTS: Project[] = [
     tips: 'The second sock is always faster than the first! Sock yarn contains nylon for durability — pure wool wears through too quickly at the heel.',
     cost_estimate: '£7 - £13',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['wearable', 'cosy'],
+    seasonalTags: ['winter', 'autumn'],
   },
   {
     id: 'project-018',
@@ -468,6 +495,9 @@ export const PROJECTS: Project[] = [
     tips: "Super chunky yarn on big needles means you'll see progress fast! Choose a soft acrylic blend for easy care and budget-friendliness.",
     cost_estimate: '£30 - £38',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['home-decor', 'cosy'],
+    isFeatured: true,
+    seasonalTags: ['winter', 'autumn'],
   },
   {
     id: 'project-019',
@@ -492,6 +522,8 @@ export const PROJECTS: Project[] = [
     tips: 'Measure your teapot first! Mark where the spout and handle openings need to be before seaming.',
     cost_estimate: '£8 - £14',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['home-decor', 'practical', 'cosy'],
+    seasonalTags: ['winter', 'autumn'],
   },
   {
     id: 'project-020',
@@ -520,6 +552,7 @@ export const PROJECTS: Project[] = [
     tips: "Insert safety eyes before closing the head — they're nearly impossible to add afterwards! Stuff firmly for a toy that holds its shape.",
     cost_estimate: '£10 - £16',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['baby', 'gift'],
   },
 
   // ============================================
@@ -550,6 +583,9 @@ export const PROJECTS: Project[] = [
     tips: 'Keep your tension consistent across all squares so they end up the same size. Blocking individual squares before joining helps enormously.',
     cost_estimate: '£24 - £29',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['home-decor', 'cosy', 'geometric'],
+    isFeatured: true,
+    seasonalTags: ['winter', 'autumn'],
   },
   {
     id: 'project-022',
@@ -577,6 +613,7 @@ export const PROJECTS: Project[] = [
     tips: 'Work tighter than normal to prevent stuffing showing through. Use a hook one size smaller than recommended on the yarn label.',
     cost_estimate: '£8 - £12',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['gift', 'baby'],
   },
   {
     id: 'project-023',
@@ -600,6 +637,7 @@ export const PROJECTS: Project[] = [
     tips: 'Stiff cotton or jute yarn works best for baskets that hold their shape. Pull your stitches firm for structure.',
     cost_estimate: '£10 - £13',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['home-decor', 'practical'],
   },
   {
     id: 'project-024',
@@ -623,6 +661,7 @@ export const PROJECTS: Project[] = [
     tips: 'Cotton yarn is best for coasters as it absorbs moisture. Mix and match colours for a cheerful set.',
     cost_estimate: '£6 - £9',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['home-decor', 'quick', 'gift'],
   },
   {
     id: 'project-025',
@@ -647,6 +686,8 @@ export const PROJECTS: Project[] = [
     tips: 'The bag will look tiny when empty but stretches enormously! Machine wash in a pillowcase to keep it fresh.',
     cost_estimate: '£8 - £11',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['practical', 'accessories'],
+    seasonalTags: ['spring', 'summer'],
   },
   {
     id: 'project-026',
@@ -671,6 +712,7 @@ export const PROJECTS: Project[] = [
     tips: 'Use a soft baby yarn — bamboo blends are lovely and gentle on baby skin. Make a note of your stitch count for the second bootie!',
     cost_estimate: '£3 - £7',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['baby', 'gift', 'quick'],
   },
   {
     id: 'project-027',
@@ -697,6 +739,9 @@ export const PROJECTS: Project[] = [
     tips: 'Cotton yarn holds petal shapes better than acrylic. Steam-blocking the finished flowers helps them hold their shape beautifully.',
     cost_estimate: '£8 - £16',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['floral', 'gift', 'home-decor'],
+    isFeatured: true,
+    seasonalTags: ['spring', 'summer'],
   },
   {
     id: 'project-028',
@@ -720,6 +765,7 @@ export const PROJECTS: Project[] = [
     tips: 'Always use 100% cotton for pot holders — synthetic yarn can melt! Making two layers ensures proper heat protection.',
     cost_estimate: '£5 - £8',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['practical', 'quick', 'home-decor'],
   },
   {
     id: 'project-029',
@@ -743,6 +789,8 @@ export const PROJECTS: Project[] = [
     tips: 'Choose a soft yarn that feels nice against your skin — merino wool or a soft acrylic are perfect. This scarf also looks great in two alternating colours.',
     cost_estimate: '£10 - £13',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['wearable', 'cosy', 'fashion'],
+    seasonalTags: ['winter', 'autumn'],
   },
   {
     id: 'project-030',
@@ -768,6 +816,7 @@ export const PROJECTS: Project[] = [
     tips: 'Work slightly tighter than normal for a snug fit. Test the fit frequently as you go!',
     cost_estimate: '£3 - £6',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['accessories', 'quick', 'practical'],
   },
 
   // ============================================
@@ -800,6 +849,9 @@ export const PROJECTS: Project[] = [
     tips: 'Use 2 strands of thread for most stitches (the full 6-strand floss is too thick). Iron the fabric before hooping for the smoothest surface.',
     cost_estimate: '£10 - £15',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['floral', 'home-decor', 'gift'],
+    isFeatured: true,
+    seasonalTags: ['spring', 'summer'],
   },
   {
     id: 'project-032',
@@ -827,6 +879,7 @@ export const PROJECTS: Project[] = [
     tips: 'Satin stitch looks best when every stitch is parallel. Work slowly and adjust as you go. A hoop keeps the fabric taut for even stitches.',
     cost_estimate: '£6 - £12',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['gift', 'accessories'],
   },
   {
     id: 'project-033',
@@ -853,6 +906,7 @@ export const PROJECTS: Project[] = [
     tips: 'Cross stitch on Aida cloth is wonderfully straightforward — the holes guide your needle perfectly. Great for watching telly!',
     cost_estimate: '£5 - £10',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['quick', 'gift', 'geometric'],
   },
   {
     id: 'project-034',
@@ -881,6 +935,7 @@ export const PROJECTS: Project[] = [
     tips: 'Bold, simple designs work best for patches. Outline everything in backstitch for a clean, graphic look.',
     cost_estimate: '£6 - £13',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['accessories', 'fashion', 'wearable'],
   },
   {
     id: 'project-035',
@@ -912,6 +967,7 @@ export const PROJECTS: Project[] = [
     tips: 'This sampler becomes your personal reference guide. Take your time with each stitch — quality over speed. Use 2 strands throughout unless otherwise noted.',
     cost_estimate: '£10 - £21',
     created_at: '2025-01-01T00:00:00.000Z',
+    tags: ['home-decor', 'floral'],
   },
 ];
 
@@ -1050,5 +1106,50 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: 'flame',
     xp_reward: 200,
     criteria: { type: 'streak', count: 30 },
+  },
+  {
+    id: 'ach-016',
+    key: 'journal_keeper',
+    name: 'Journal Keeper',
+    description: 'Log 5 entries in your craft journal',
+    icon: 'book-open',
+    xp_reward: 25,
+    criteria: { type: 'journal_entries', count: 5 },
+  },
+  {
+    id: 'ach-017',
+    key: 'favorites_collector',
+    name: 'Favourites Collector',
+    description: 'Add 10 projects to your favourites',
+    icon: 'heart',
+    xp_reward: 15,
+    criteria: { type: 'favorites_count', count: 10 },
+  },
+  {
+    id: 'ach-018',
+    key: 'craft_mode_master',
+    name: 'Craft Mode Master',
+    description: 'Complete 5 craft mode sessions',
+    icon: 'zap',
+    xp_reward: 25,
+    criteria: { type: 'craft_mode_sessions', count: 5 },
+  },
+  {
+    id: 'ach-019',
+    key: 'social_crafter',
+    name: 'Social Crafter',
+    description: 'Share 3 projects with friends',
+    icon: 'share-2',
+    xp_reward: 15,
+    criteria: { type: 'projects_shared', count: 3 },
+  },
+  {
+    id: 'ach-020',
+    key: 'perfect_rating',
+    name: 'Perfectionist',
+    description: 'Give a project a 5-star rating',
+    icon: 'star',
+    xp_reward: 15,
+    criteria: { type: 'five_star_rating', count: 1 },
   },
 ];

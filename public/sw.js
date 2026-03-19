@@ -8,15 +8,15 @@
  * - Stale-while-revalidate for images
  */
 
-const CACHE_NAME = 'thimbl-v1';
+const CACHE_NAME = 'thimbl-v2';
 
 // Assets to pre-cache on install
 const PRECACHE_URLS = [
   '/',
   '/dashboard',
-  '/explore',
-  '/my-projects',
-  '/shopping-list',
+  '/search',
+  '/favorites',
+  '/journal',
   '/achievements',
   '/profile',
   '/icons/icon-192.png',
@@ -60,8 +60,8 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // Skip Supabase API calls — always go to network
-  if (url.hostname.includes('supabase.co')) return;
+  // Skip external API calls
+  if (url.hostname !== self.location.hostname) return;
 
   // Skip chrome-extension and other non-http(s) URLs
   if (!url.protocol.startsWith('http')) return;

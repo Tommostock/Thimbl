@@ -5,7 +5,7 @@
  * Single key 'thimbl_data' stores the entire user state.
  */
 
-import type { UserProject, ShoppingListItem } from '@/lib/types/database';
+import type { UserProject, ShoppingListItem, JournalEntry, ProjectNote } from '@/lib/types/database';
 
 export interface StoredPhoto {
   id: string;
@@ -21,6 +21,8 @@ export interface StoredStats {
   current_streak: number;
   longest_streak: number;
   last_activity_date: string | null;
+  craft_mode_sessions: number;
+  projects_shared: number;
 }
 
 export interface StoredProfile {
@@ -33,8 +35,12 @@ export interface ThimblStorage {
   userProjects: UserProject[];
   shoppingList: ShoppingListItem[];
   userStats: StoredStats;
-  unlockedAchievements: string[]; // achievement IDs
+  unlockedAchievements: string[];
   userPhotos: StoredPhoto[];
+  favorites: string[];
+  journalEntries: JournalEntry[];
+  recentlyViewed: string[];
+  projectNotes: ProjectNote[];
 }
 
 const STORAGE_KEY = 'thimbl_data';
@@ -49,9 +55,15 @@ const DEFAULT_STORAGE: ThimblStorage = {
     current_streak: 0,
     longest_streak: 0,
     last_activity_date: null,
+    craft_mode_sessions: 0,
+    projects_shared: 0,
   },
   unlockedAchievements: [],
   userPhotos: [],
+  favorites: [],
+  journalEntries: [],
+  recentlyViewed: [],
+  projectNotes: [],
 };
 
 /** Load the full storage object. Returns defaults if nothing is stored. */
@@ -172,6 +184,82 @@ export function unlockAchievement(achievementId: string): void {
   if (!unlockedAchievements.includes(achievementId)) {
     setStorage({ unlockedAchievements: [...unlockedAchievements, achievementId] });
   }
+}
+
+// -------------------------------------------------------
+// Favorites
+// -------------------------------------------------------
+
+export function getFavorites(): string[] {
+  return getStorage().favorites;
+}
+
+export function addFavorite(projectId: string): void {
+  const { favorites } = getStorage();
+  if (!favorites.includes(projectId)) {
+    setStorage({ favorites: [projectId, ...favorites] });
+  }
+}
+
+export function removeFavorite(projectId: string): void {
+  const { favorites } = getStorage();
+  setStorage({ favorites: favorites.filter((id) => id !== projectId) });
+}
+
+export function isFavorite(projectId: string): boolean {
+  return getStorage().favorites.includes(projectId);
+}
+
+// -------------------------------------------------------
+// Journal
+// -------------------------------------------------------
+
+export function getJournalEntries(): JournalEntry[] {
+  return getStorage().journalEntries;
+}
+
+export function saveJournalEntry(entry: JournalEntry): void {
+  const { journalEntries } = getStorage();
+  journalEntries.unshift(entry);
+  setStorage({ journalEntries });
+}
+
+export function deleteJournalEntry(id: string): void {
+  const { journalEntries } = getStorage();
+  setStorage({ journalEntries: journalEntries.filter((e) => e.id !== id) });
+}
+
+// -------------------------------------------------------
+// Recently Viewed
+// -------------------------------------------------------
+
+export function getRecentlyViewed(): string[] {
+  return getStorage().recentlyViewed;
+}
+
+export function addRecentlyViewed(projectId: string): void {
+  const { recentlyViewed } = getStorage();
+  const filtered = recentlyViewed.filter((id) => id !== projectId);
+  setStorage({ recentlyViewed: [projectId, ...filtered].slice(0, 20) });
+}
+
+// -------------------------------------------------------
+// Project Notes
+// -------------------------------------------------------
+
+export function getProjectNotes(projectId: string): ProjectNote[] {
+  return getStorage().projectNotes.filter((n) => n.projectId === projectId);
+}
+
+export function saveProjectNote(note: ProjectNote): void {
+  const { projectNotes } = getStorage();
+  projectNotes.unshift(note);
+  setStorage({ projectNotes });
+}
+
+export function deleteProjectNote(id: string): void {
+  const { projectNotes } = getStorage();
+  setStorage({ projectNotes: projectNotes.filter((n) => n.id !== id) });
 }
 
 // -------------------------------------------------------

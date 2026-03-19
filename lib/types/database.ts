@@ -46,6 +46,9 @@ export type Database = {
           tips: string | null;
           cost_estimate: string | null;
           created_at: string;
+          tags?: string[];
+          isFeatured?: boolean;
+          seasonalTags?: string[];
         };
         Insert: {
           id?: string;
@@ -60,6 +63,9 @@ export type Database = {
           tips?: string | null;
           cost_estimate?: string | null;
           created_at?: string;
+          tags?: string[];
+          isFeatured?: boolean;
+          seasonalTags?: string[];
         };
         Update: {
           title?: string;
@@ -72,6 +78,9 @@ export type Database = {
           steps?: StepItem[];
           tips?: string | null;
           cost_estimate?: string | null;
+          tags?: string[];
+          isFeatured?: boolean;
+          seasonalTags?: string[];
         };
         Relationships: [];
       };
@@ -275,6 +284,25 @@ export interface AchievementCriteria {
   category?: string;
   days?: number;
   [key: string]: unknown;
+}
+
+/** A journal entry logging a craft session */
+export interface JournalEntry {
+  id: string;
+  projectId: string;
+  projectTitle: string;
+  rating: number; // 1-5 stars
+  photos: string[]; // base64 data URLs, max 6
+  notes: string;
+  createdAt: string;
+}
+
+/** A personal note attached to a project */
+export interface ProjectNote {
+  id: string;
+  projectId: string;
+  text: string;
+  createdAt: string;
 }
 
 // ============================================
