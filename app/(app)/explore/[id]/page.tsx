@@ -146,7 +146,7 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
       {/* Hero image carousel */}
       <div className="relative">
         <PatternImageCarousel
-          images={content?.images ?? []}
+          images={(content?.images ?? []).slice(0, 5)}
           fallbackImage={tutorial.imageUrl}
           title={tutorial.title}
         />
@@ -215,7 +215,16 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
             {tutorial.description}
           </p>
           <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-            Pattern by {tutorial.sourceName}
+            <a
+              href={tutorial.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-1 underline-offset-2"
+              style={{ color: 'var(--accent-primary)' }}
+            >
+              Pattern
+            </a>
+            {' '}by {tutorial.sourceName}
           </p>
         </div>
 
