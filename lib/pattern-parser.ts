@@ -222,31 +222,23 @@ function extractSections(patternText: string): PatternSection[] {
   // Get text from start marker onwards
   const instructionText = startMarker >= 0 ? patternText.slice(startMarker) : patternText;
 
-  // Split by lines that look like section headings (ALL CAPS followed by colon or newline)
-  const headingRegex =
-    /^([A-Z][A-Z\s]+(?:PIECE|ARMHOLES?|SLEEVE|SLEEVES|BODY|ASSEMBLY|FINISHING|NECKBAND|BORDER|RIBBING|OVERVIEW|COLLAR|POCKET|HOOD|YOKE|CHICKEN|WINGS?|BEAK|LEGS?|COCKSCOMB|ROUND|CAP|STITCHES|TURN)[A-Z\s]*)[:\s]*$/gm;
-
+  // Split by lines that look like section headings (ALL CAPS word(s) with colon)
+  // Use a simple approach: any line that is entirely uppercase letters/spaces, ends with colon or is standalone
   const headings: { heading: string; index: number }[] = [];
-  let m;
-  while ((m = headingRegex.exec(instructionText)) !== null) {
-    headings.push({ heading: m[1].trim(), index: m.index });
-  }
-
-  // Also try a simpler approach: lines that are entirely uppercase, > 4 chars, contain letter
-  if (headings.length === 0) {
+  {
     const lines = instructionText.split('\n');
     let offset = 0;
     for (const line of lines) {
       const trimmed = line.trim();
+      const withoutColon = trimmed.replace(/:$/, '').trim();
       if (
-        trimmed.length > 4 &&
-        trimmed === trimmed.toUpperCase() &&
-        /[A-Z]{2,}/.test(trimmed) &&
-        !trimmed.startsWith('ROW') &&
-        !trimmed.startsWith('ROUND') &&
-        !trimmed.startsWith('---') &&
-        !trimmed.startsWith('NOTE') &&
-        !trimmed.startsWith('REMEMBER')
+        withoutColon.length >= 3 &&
+        withoutColon === withoutColon.toUpperCase() &&
+        /^[A-Z][A-Z\s-]*$/.test(withoutColon) &&
+        !withoutColon.startsWith('ROW') &&
+        !withoutColon.startsWith('ROUND') &&
+        !withoutColon.startsWith('NOTE') &&
+        !withoutColon.startsWith('REMEMBER')
       ) {
         headings.push({ heading: trimmed.replace(/:$/, ''), index: offset });
       }
