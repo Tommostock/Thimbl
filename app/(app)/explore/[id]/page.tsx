@@ -2,19 +2,20 @@
 
 import { use, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
   Heart,
   Share2,
-  ExternalLink,
   MessageSquare,
   Plus,
   Trash2,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 
 import { getTutorialById } from '@/lib/tutorials';
+import { usePatternContent } from '@/hooks/usePatternContent';
 import { useFavorites } from '@/hooks/useFavorites';
 import {
   getProjectNotes,
@@ -28,6 +29,12 @@ import {
 import { awardXP } from '@/lib/xp';
 import { XP_REWARDS } from '@/lib/constants';
 import { useAchievements } from '@/hooks/useAchievements';
+
+import PatternImageCarousel from '@/components/pattern/PatternImageCarousel';
+import PatternSkeleton from '@/components/pattern/PatternSkeleton';
+import MaterialsList from '@/components/pattern/MaterialsList';
+import PatternInstructions from '@/components/pattern/PatternInstructions';
+import PatternTips from '@/components/pattern/PatternTips';
 import Timer from '@/components/project/Timer';
 import type { ProjectNote } from '@/lib/types/database';
 
@@ -43,6 +50,7 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
   const { checkAchievements } = useAchievements();
 
   const tutorial = getTutorialById(id);
+  const { content, loading, error, retry } = usePatternContent(id);
 
   // Notes
   const [notes, setNotes] = useState<ProjectNote[]>(() => (tutorial ? getProjectNotes(id) : []));
@@ -81,7 +89,7 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
       await navigator.share({
         title: tutorial.title,
         text: `Check out this ${tutorial.category} pattern: ${tutorial.title}`,
-        url: tutorial.sourceUrl,
+        url: window.location.href,
       });
     } catch {
       // cancelled
@@ -134,21 +142,17 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
   const bgColour = craftBadgeColour[tutorial.category] ?? '#8BA888';
 
   return (
-    <div className="pb-32">
-      {/* Hero image */}
-      <div className="relative h-72">
-        <Image
-          src={tutorial.imageUrl}
-          alt={tutorial.title}
-          fill
-          className="object-cover"
-          sizes="100vw"
-          unoptimized
-          priority
+    <div className="pb-24">
+      {/* Hero image carousel */}
+      <div className="relative">
+        <PatternImageCarousel
+          images={content?.images ?? []}
+          fallbackImage={tutorial.imageUrl}
+          title={tutorial.title}
         />
 
-        {/* Action bar */}
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+        {/* Action bar overlay */}
+        <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20">
           <button
             onClick={() => router.back()}
             className="w-10 h-10 rounded-full flex items-center justify-center min-h-[44px] min-w-[44px]"
@@ -211,7 +215,7 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
             {tutorial.description}
           </p>
           <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-            Source: {tutorial.sourceName}
+            Pattern by {tutorial.sourceName}
           </p>
         </div>
 
@@ -230,20 +234,77 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
           </div>
         )}
 
-        {/* View full pattern CTA */}
-        <a
-          href={tutorial.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-semibold text-sm mb-5 min-h-[44px]"
-          style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
-        >
-          <ExternalLink size={16} />
-          View Full Pattern on {tutorial.sourceName}
-        </a>
+        {/* Sizes (from parsed content) */}
+        {content && content.sizes.length > 0 && (
+          <div className="mb-5">
+            <h3 className="text-xs font-semibold mb-2" style={{ color: 'var(--accent-primary)' }}>
+              Available Sizes
+            </h3>
+            <div className="flex flex-wrap gap-1.5">
+              {content.sizes.map((size) => (
+                <span
+                  key={size}
+                  className="text-xs font-medium px-3 py-1 rounded-full"
+                  style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border-colour)',
+                  }}
+                >
+                  {size}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Loading / Error / Content */}
+        {loading && <PatternSkeleton />}
+
+        {error && !loading && (
+          <div
+            className="rounded-xl p-4 mb-5 flex items-center gap-3"
+            style={{ backgroundColor: 'var(--bg-secondary)' }}
+          >
+            <AlertCircle size={20} style={{ color: '#e74c3c' }} className="shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                Couldn&apos;t load full pattern
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                {error}
+              </p>
+            </div>
+            <button
+              onClick={retry}
+              className="shrink-0 flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg min-h-[36px]"
+              style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
+            >
+              <RefreshCw size={14} />
+              Retry
+            </button>
+          </div>
+        )}
+
+        {content && !loading && (
+          <div className="space-y-5">
+            {/* Materials */}
+            <MaterialsList
+              materials={content.materials}
+              needles={content.needles}
+              gauge={content.gauge}
+            />
+
+            {/* Instructions */}
+            <PatternInstructions sections={content.sections} />
+
+            {/* Tips */}
+            <PatternTips tips={content.tips} />
+          </div>
+        )}
 
         {/* Personal notes */}
-        <div className="mb-5">
+        <div className="mt-5 mb-5">
           <div className="flex items-center justify-between mb-3">
             <h2
               className="text-lg font-bold flex items-center gap-2"
@@ -321,33 +382,6 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
         {/* Timer */}
         <div className="mb-5">
           <Timer />
-        </div>
-      </div>
-
-      {/* Sticky bottom */}
-      <div
-        className="fixed bottom-0 left-0 right-0 p-4 z-30"
-        style={{ backgroundColor: 'var(--bg-primary)', borderTop: '1px solid var(--border-colour)' }}
-      >
-        <div className="flex gap-2 max-w-lg mx-auto">
-          <a
-            href={tutorial.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 min-h-[44px]"
-            style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
-          >
-            <ExternalLink size={16} />
-            View Full Pattern
-          </a>
-          <button
-            onClick={handleShare}
-            className="py-3 px-4 rounded-xl min-h-[44px] flex items-center justify-center"
-            style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-colour)' }}
-            aria-label="Share"
-          >
-            <Share2 size={18} />
-          </button>
         </div>
       </div>
     </div>
