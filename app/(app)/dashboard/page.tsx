@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sun, Moon, Search, SearchX } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -8,10 +8,12 @@ import {
   TUTORIALS,
   SUBCATEGORIES,
   searchTutorials,
+  getTutorialById,
   getTutorialsByCategory,
   getTutorialsBySubcategory,
   type CraftTutorial,
 } from '@/lib/tutorials';
+import { getRecentlyViewed } from '@/lib/storage';
 import SectionHeader from '@/components/home/SectionHeader';
 import TutorialCardSmall from '@/components/home/TutorialCardSmall';
 import TutorialCard from '@/components/catalogue/TutorialCard';
@@ -51,6 +53,17 @@ export default function HomePage() {
     if (subcategory) filtered = filtered.filter((t) => t.subcategory === subcategory);
     return filtered;
   }, [debouncedQuery, craft, subcategory]);
+
+  // Recently viewed (loaded from localStorage on mount)
+  const [recentlyViewed, setRecentlyViewed] = useState<CraftTutorial[]>([]);
+  useEffect(() => {
+    const ids = getRecentlyViewed();
+    const tutorials = ids
+      .map((rid) => getTutorialById(rid))
+      .filter((t): t is CraftTutorial => t !== undefined)
+      .slice(0, 8);
+    setRecentlyViewed(tutorials);
+  }, []);
 
   // Discovery carousels (only computed when needed)
   const knittingHighlights = useMemo(() => getTutorialsByCategory('knitting').slice(0, 10), []);
@@ -157,6 +170,18 @@ export default function HomePage() {
       {/* Discovery carousels — only when browsing (no search/filters active) */}
       {!isFiltering && (
         <>
+          {/* Recently Viewed */}
+          {recentlyViewed.length > 0 && (
+            <div className="mb-6">
+              <SectionHeader title="Recently Viewed" />
+              <div className="flex gap-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                {recentlyViewed.map((t) => (
+                  <TutorialCardSmall key={t.id} tutorial={t} />
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mb-6">
             <SectionHeader title="🧶 Knitting Patterns" />
             <div className="flex gap-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
