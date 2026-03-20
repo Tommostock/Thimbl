@@ -63,17 +63,6 @@ export interface SkillStats {
   averageRating: number;
   byCategory: CategoryStat[];
   bySubcategory: SubcategoryStat[];
-  achievements: CraftAchievement[];
-}
-
-// ---- Achievements (special milestones) ----
-
-export interface CraftAchievement {
-  id: string;
-  name: string;
-  emoji: string;
-  description: string;
-  earned: boolean;
 }
 
 // ---- Compute stats ----
@@ -124,60 +113,11 @@ export function computeSkillStats(entries: JournalEntry[]): SkillStats {
       nextBadge: getNextBadge(count),
     }));
 
-  // Milestone achievements
-  const photoBakes = entries.filter((e) => e.photos.length > 0).length;
-  const fiveStarCount = entries.filter((e) => e.rating === 5).length;
-  const uniqueCategories = new Set(
-    entries
-      .map((e) => getTutorialById(e.projectId)?.category)
-      .filter(Boolean),
-  ).size;
-  const noteBakes = entries.filter((e) => e.notes.trim().length > 0).length;
-
-  const achievements: CraftAchievement[] = [
-    {
-      id: 'first-craft',
-      name: 'First Stitch',
-      emoji: '🎯',
-      description: 'Log your first craft session',
-      earned: totalSessions >= 1,
-    },
-    {
-      id: 'shutterbug',
-      name: 'Shutterbug',
-      emoji: '📸',
-      description: 'Add photos to 5 sessions',
-      earned: photoBakes >= 5,
-    },
-    {
-      id: 'perfectionist',
-      name: 'Perfectionist',
-      emoji: '🌟',
-      description: 'Give 3 five-star ratings',
-      earned: fiveStarCount >= 3,
-    },
-    {
-      id: 'explorer',
-      name: 'Explorer',
-      emoji: '🗂',
-      description: 'Craft from both categories',
-      earned: uniqueCategories >= 2,
-    },
-    {
-      id: 'storyteller',
-      name: 'Storyteller',
-      emoji: '📝',
-      description: 'Add notes to 10 sessions',
-      earned: noteBakes >= 10,
-    },
-  ];
-
   return {
     totalSessions,
     uniquePatterns,
     averageRating,
     byCategory,
     bySubcategory,
-    achievements,
   };
 }

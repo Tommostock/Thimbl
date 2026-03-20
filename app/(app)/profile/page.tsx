@@ -240,49 +240,14 @@ export default function ProfilePage() {
         </motion.div>
       )}
 
-      {/* 6. Crafting Milestones (from skills system) */}
-      {skillStats && skillStats.achievements.some((a) => a.earned) && (
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-        >
-          <SectionHeader title="Milestones" />
-          <div className="grid grid-cols-3 gap-2">
-            {skillStats.achievements.map((ach) => (
-              <div
-                key={ach.id}
-                className="rounded-xl p-3 text-center"
-                style={{
-                  backgroundColor: ach.earned ? 'var(--bg-secondary)' : 'var(--bg-secondary)',
-                  opacity: ach.earned ? 1 : 0.4,
-                }}
-              >
-                <div className="text-2xl mb-1">{ach.earned ? ach.emoji : '🔒'}</div>
-                <p
-                  className="text-xs font-semibold"
-                  style={{ color: ach.earned ? 'var(--text-primary)' : 'var(--text-muted)' }}
-                >
-                  {ach.name}
-                </p>
-                <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {ach.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* 7. Achievements */}
+      {/* 6. Achievements */}
       <motion.div
         className="mb-6"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.25 }}
       >
-        <SectionHeader title="Achievements" href="/achievements" count={unlockedIds.length} />
+        <SectionHeader title="Achievements" count={unlockedIds.length} />
         <BadgeGrid achievements={ACHIEVEMENTS} unlockedIds={unlockedIds} />
       </motion.div>
 
