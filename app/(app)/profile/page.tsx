@@ -6,7 +6,7 @@ import { BookOpen, Layers, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStorage } from '@/lib/storage';
 import { getLevelForXP, CATEGORIES } from '@/lib/constants';
-import { ACHIEVEMENTS } from '@/lib/data';
+import { ACHIEVEMENTS } from '@/lib/achievements';
 import { computeSkillStats, type SkillStats } from '@/lib/skills';
 import type { StoredStats, StoredProfile } from '@/lib/storage';
 import type { JournalEntry } from '@/lib/types/database';

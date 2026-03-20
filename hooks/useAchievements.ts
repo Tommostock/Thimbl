@@ -3,7 +3,8 @@
 import { useCallback } from 'react';
 import { getStorage, getUnlockedAchievements, unlockAchievement } from '@/lib/storage';
 import { awardXP } from '@/lib/xp';
-import { ACHIEVEMENTS, PROJECTS } from '@/lib/data';
+import { ACHIEVEMENTS } from '@/lib/achievements';
+import { getTutorialById } from '@/lib/tutorials';
 import type { Achievement, AchievementCriteria } from '@/lib/types/database';
 
 /**
@@ -23,33 +24,36 @@ export function useAchievements() {
     const completedProjects = userProjects.filter((p) => p.status === 'completed');
     const totalHours = userProjects.reduce((sum, p) => sum + (p.hours_logged || 0), 0);
 
-    // Count completions per category
+    // Count completions per category (using tutorials lookup)
     const categoryCompletedCounts: Record<string, number> = {};
     let hasFiveStar = false;
-    let hasFastCompletion = false;
 
     for (const up of completedProjects) {
-      const project = PROJECTS.find((p) => p.id === up.project_id);
-      if (project) {
-        categoryCompletedCounts[project.category] = (categoryCompletedCounts[project.category] || 0) + 1;
+      const tutorial = getTutorialById(up.project_id);
+      if (tutorial) {
+        categoryCompletedCounts[tutorial.category] = (categoryCompletedCounts[tutorial.category] || 0) + 1;
       }
       if (up.rating === 5) hasFiveStar = true;
-      if (up.started_at && up.completed_at) {
-        const days = (new Date(up.completed_at).getTime() - new Date(up.started_at).getTime()) / (1000 * 60 * 60 * 24);
-        if (days < 7) hasFastCompletion = true;
-      }
     }
 
-    const ctx = {
-      projectsStarted: userProjects.length,
+    // Also count journal entries per category for broader achievement tracking
+    for (const entry of (journalEntries ?? [])) {
+      const tutorial = getTutorialById(entry.projectId);
+      if (tutorial) {
+        categoryCompletedCounts[tutorial.category] = (categoryCompletedCounts[tutorial.category] || 0) + 1;
+      }
+      if (entry.rating === 5) hasFiveStar = true;
+    }
+
+    const ctx: EvalContext = {
+      projectsStarted: userProjects.length + (journalEntries ?? []).length,
       projectsCompleted: completedProjects.length,
-      photosUploaded: userPhotos.length,
+      photosUploaded: userPhotos.length + (journalEntries ?? []).reduce((sum, e) => sum + e.photos.length, 0),
       totalHours,
       longestStreak: userStats.longest_streak || 0,
       categoryCompletedCounts,
       categoriesWithCompletions: Object.keys(categoryCompletedCounts).length,
       hasFiveStar,
-      hasFastCompletion,
       journalEntryCount: (journalEntries ?? []).length,
       favoritesCount: (favorites ?? []).length,
       craftModeSessions: userStats.craft_mode_sessions ?? 0,
@@ -86,7 +90,6 @@ interface EvalContext {
   categoryCompletedCounts: Record<string, number>;
   categoriesWithCompletions: number;
   hasFiveStar: boolean;
-  hasFastCompletion: boolean;
   journalEntryCount: number;
   favoritesCount: number;
   craftModeSessions: number;
@@ -103,9 +106,7 @@ function evaluateCriteria(criteria: AchievementCriteria, ctx: EvalContext): bool
     case 'hours_logged': return ctx.totalHours >= count;
     case 'streak': return ctx.longestStreak >= count;
     case 'five_star_rating': return ctx.hasFiveStar;
-    case 'fast_completion': return ctx.hasFastCompletion;
     case 'all_categories': return ctx.categoriesWithCompletions >= count;
-    case 'category_all_complete': return Object.values(ctx.categoryCompletedCounts).some((c) => c >= 10);
     case 'journal_entries': return ctx.journalEntryCount >= count;
     case 'favorites_count': return ctx.favoritesCount >= count;
     case 'craft_mode_sessions': return ctx.craftModeSessions >= count;

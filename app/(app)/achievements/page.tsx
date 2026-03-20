@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { getUnlockedAchievements } from '@/lib/storage';
-import { ACHIEVEMENTS } from '@/lib/data';
+import { ACHIEVEMENTS } from '@/lib/achievements';
 import BadgeGrid from '@/components/profile/BadgeGrid';
 
 /**
