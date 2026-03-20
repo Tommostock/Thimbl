@@ -67,24 +67,35 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
   const notesRef = useRef<HTMLDivElement>(null);
   const tabBarRef = useRef<HTMLDivElement>(null);
 
+  // When a tab is tapped, lock the active tab for a moment so the scroll
+  // handler doesn't immediately override it before the smooth-scroll finishes.
+  const scrollLockRef = useRef(false);
+
   const scrollToSection = useCallback((tab: Tab) => {
     setActiveTab(tab);
+    scrollLockRef.current = true;
     const ref = tab === 'Overview' ? overviewRef : tab === 'Instructions' ? instructionsRef : notesRef;
     if (ref.current && tabBarRef.current) {
       const tabBarHeight = tabBarRef.current.offsetHeight;
       const top = ref.current.getBoundingClientRect().top + window.scrollY - tabBarHeight - 8;
       window.scrollTo({ top, behavior: 'smooth' });
     }
+    // Unlock after the smooth scroll settles
+    setTimeout(() => { scrollLockRef.current = false; }, 800);
   }, []);
 
-  // Update active tab on scroll
+  // Update active tab on scroll (skipped while a tap-scroll is in progress)
   useEffect(() => {
     const handleScroll = () => {
-      if (!tabBarRef.current) return;
+      if (scrollLockRef.current || !tabBarRef.current) return;
       const offset = tabBarRef.current.offsetHeight + 16;
       const scrollY = window.scrollY + offset;
 
-      if (notesRef.current && scrollY >= notesRef.current.offsetTop - 8) {
+      // Check if user has scrolled near the bottom of the page — if so, activate Notes
+      const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 100;
+      if (nearBottom && notesRef.current) {
+        setActiveTab('Notes');
+      } else if (notesRef.current && scrollY >= notesRef.current.offsetTop - 8) {
         setActiveTab('Notes');
       } else if (instructionsRef.current && scrollY >= instructionsRef.current.offsetTop - 8) {
         setActiveTab('Instructions');
