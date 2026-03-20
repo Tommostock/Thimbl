@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Search, Camera } from 'lucide-react';
+import { X, Plus, Search, Camera, PenLine } from 'lucide-react';
 import StarRating from '@/components/ui/StarRating';
 import { TUTORIALS, type CraftTutorial } from '@/lib/tutorials';
 import { generateId } from '@/lib/storage';
@@ -12,7 +12,6 @@ interface JournalEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (entry: JournalEntry) => void;
-  /** Pre-select a tutorial when opening from a pattern page */
   preSelectedTutorialId?: string | null;
 }
 
@@ -57,9 +56,18 @@ export default function JournalEntryModal({
     ? TUTORIALS.find((t) => t.id === preSelectedTutorialId) ?? null
     : null;
 
+  // Mode: 'catalogue' (search DROPS patterns) or 'custom' (type your own name)
+  const [mode, setMode] = useState<'catalogue' | 'custom'>(preSelected ? 'catalogue' : 'catalogue');
+
+  // Catalogue mode state
   const [searchQuery, setSearchQuery] = useState(preSelected?.title ?? '');
   const [selectedTutorial, setSelectedTutorial] = useState<CraftTutorial | null>(preSelected);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Custom mode state
+  const [customName, setCustomName] = useState('');
+
+  // Shared state
   const [rating, setRating] = useState(0);
   const [photos, setPhotos] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
@@ -99,8 +107,11 @@ export default function JournalEntryModal({
 
   const handleSave = useCallback(() => {
     const newErrors: { project?: boolean; rating?: boolean } = {};
-    if (!selectedTutorial) newErrors.project = true;
+
+    if (mode === 'catalogue' && !selectedTutorial) newErrors.project = true;
+    if (mode === 'custom' && !customName.trim()) newErrors.project = true;
     if (rating < 1) newErrors.rating = true;
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -108,8 +119,8 @@ export default function JournalEntryModal({
 
     const entry: JournalEntry = {
       id: generateId(),
-      projectId: selectedTutorial!.id,
-      projectTitle: selectedTutorial!.title,
+      projectId: mode === 'catalogue' ? selectedTutorial!.id : `custom-${generateId()}`,
+      projectTitle: mode === 'catalogue' ? selectedTutorial!.title : customName.trim(),
       rating,
       photos,
       notes,
@@ -120,12 +131,25 @@ export default function JournalEntryModal({
     // Reset form
     setSearchQuery('');
     setSelectedTutorial(null);
+    setCustomName('');
     setRating(0);
     setPhotos([]);
     setNotes('');
     setErrors({});
     onClose();
-  }, [selectedTutorial, rating, photos, notes, onSave, onClose]);
+  }, [mode, selectedTutorial, customName, rating, photos, notes, onSave, onClose]);
+
+  const switchMode = useCallback((newMode: 'catalogue' | 'custom') => {
+    setMode(newMode);
+    setErrors((prev) => ({ ...prev, project: false }));
+    if (newMode === 'custom') {
+      setSelectedTutorial(null);
+      setSearchQuery('');
+      setShowDropdown(false);
+    } else {
+      setCustomName('');
+    }
+  }, []);
 
   return (
     <AnimatePresence>
@@ -160,94 +184,151 @@ export default function JournalEntryModal({
               </button>
             </div>
 
-            {/* Pattern Search */}
-            <div className="mb-5 relative">
-              <label className="text-sm font-medium mb-1.5 block" style={{ color: 'var(--text-secondary)' }}>
-                Pattern
-              </label>
-              <div
-                className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+            {/* Mode toggle */}
+            <div className="flex gap-2 mb-5">
+              <button
+                onClick={() => switchMode('catalogue')}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors"
                 style={{
-                  backgroundColor: 'var(--bg-secondary)',
-                  border: errors.project ? '2px solid #ef4444' : '1px solid var(--border-colour)',
+                  backgroundColor: mode === 'catalogue' ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+                  color: mode === 'catalogue' ? '#fff' : 'var(--text-secondary)',
                 }}
               >
-                <Search size={16} style={{ color: 'var(--text-muted)' }} />
+                <Search size={14} />
+                From Catalogue
+              </button>
+              <button
+                onClick={() => switchMode('custom')}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor: mode === 'custom' ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+                  color: mode === 'custom' ? '#fff' : 'var(--text-secondary)',
+                }}
+              >
+                <PenLine size={14} />
+                Custom Project
+              </button>
+            </div>
+
+            {/* Project selection — catalogue mode */}
+            {mode === 'catalogue' && (
+              <div className="mb-5 relative">
+                <label className="text-sm font-medium mb-1.5 block" style={{ color: 'var(--text-secondary)' }}>
+                  Pattern
+                </label>
+                <div
+                  className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+                  style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: errors.project ? '2px solid #ef4444' : '1px solid var(--border-colour)',
+                  }}
+                >
+                  <Search size={16} style={{ color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setShowDropdown(true);
+                      if (selectedTutorial && e.target.value !== selectedTutorial.title) {
+                        setSelectedTutorial(null);
+                      }
+                    }}
+                    onFocus={() => setShowDropdown(true)}
+                    placeholder="Search patterns..."
+                    className="flex-1 bg-transparent border-none outline-none text-sm"
+                    style={{ color: 'var(--text-primary)' }}
+                  />
+                </div>
+                {errors.project && (
+                  <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
+                    Please select a pattern
+                  </p>
+                )}
+
+                {/* Selected tutorial preview */}
+                {selectedTutorial && (
+                  <div
+                    className="mt-2 flex items-center gap-3 rounded-lg p-2"
+                    style={{ backgroundColor: 'var(--bg-secondary)' }}
+                  >
+                    <img
+                      src={selectedTutorial.imageUrl}
+                      alt={selectedTutorial.title}
+                      className="w-12 h-12 rounded-lg object-cover shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                        {selectedTutorial.title}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {selectedTutorial.category === 'knitting' ? '🧶' : '🪝'} {selectedTutorial.subcategory}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Dropdown */}
+                {showDropdown && filteredTutorials.length > 0 && !selectedTutorial && (
+                  <div
+                    className="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-10 shadow-lg max-h-60 overflow-y-auto"
+                    style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-colour)' }}
+                  >
+                    {filteredTutorials.map((tutorial) => (
+                      <button
+                        key={tutorial.id}
+                        className="w-full text-left px-4 py-3 flex items-center gap-3 hover:opacity-80 transition-opacity"
+                        style={{ borderBottom: '1px solid var(--border-colour)' }}
+                        onClick={() => handleSelectTutorial(tutorial)}
+                      >
+                        <img
+                          src={tutorial.imageUrl}
+                          alt={tutorial.title}
+                          className="w-10 h-10 rounded-lg object-cover shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                            {tutorial.title}
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {tutorial.category === 'knitting' ? '🧶' : '🪝'} {tutorial.subcategory}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Project selection — custom mode */}
+            {mode === 'custom' && (
+              <div className="mb-5">
+                <label className="text-sm font-medium mb-1.5 block" style={{ color: 'var(--text-secondary)' }}>
+                  Project Name
+                </label>
                 <input
                   type="text"
-                  value={searchQuery}
+                  value={customName}
                   onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setShowDropdown(true);
-                    if (selectedTutorial && e.target.value !== selectedTutorial.title) {
-                      setSelectedTutorial(null);
-                    }
+                    setCustomName(e.target.value);
+                    setErrors((prev) => ({ ...prev, project: false }));
                   }}
-                  onFocus={() => setShowDropdown(true)}
-                  placeholder="Search patterns..."
-                  className="flex-1 bg-transparent border-none outline-none text-sm"
-                  style={{ color: 'var(--text-primary)' }}
+                  placeholder="e.g. Grandma's scarf, Baby blanket..."
+                  className="w-full rounded-xl px-3 py-2.5 text-sm border-none outline-none"
+                  style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: errors.project ? '2px solid #ef4444' : '1px solid var(--border-colour)',
+                  }}
                 />
+                {errors.project && (
+                  <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
+                    Please enter a project name
+                  </p>
+                )}
               </div>
-              {errors.project && (
-                <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
-                  Please select a pattern
-                </p>
-              )}
-
-              {/* Selected tutorial preview */}
-              {selectedTutorial && (
-                <div
-                  className="mt-2 flex items-center gap-3 rounded-lg p-2"
-                  style={{ backgroundColor: 'var(--bg-secondary)' }}
-                >
-                  <img
-                    src={selectedTutorial.imageUrl}
-                    alt={selectedTutorial.title}
-                    className="w-12 h-12 rounded-lg object-cover shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                      {selectedTutorial.title}
-                    </p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {selectedTutorial.category === 'knitting' ? '🧶' : '🪝'} {selectedTutorial.subcategory}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Dropdown */}
-              {showDropdown && filteredTutorials.length > 0 && !selectedTutorial && (
-                <div
-                  className="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-10 shadow-lg max-h-60 overflow-y-auto"
-                  style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-colour)' }}
-                >
-                  {filteredTutorials.map((tutorial) => (
-                    <button
-                      key={tutorial.id}
-                      className="w-full text-left px-4 py-3 flex items-center gap-3 hover:opacity-80 transition-opacity"
-                      style={{ borderBottom: '1px solid var(--border-colour)' }}
-                      onClick={() => handleSelectTutorial(tutorial)}
-                    >
-                      <img
-                        src={tutorial.imageUrl}
-                        alt={tutorial.title}
-                        className="w-10 h-10 rounded-lg object-cover shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                          {tutorial.title}
-                        </p>
-                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {tutorial.category === 'knitting' ? '🧶' : '🪝'} {tutorial.subcategory}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Star Rating */}
             <div className="mb-5">
