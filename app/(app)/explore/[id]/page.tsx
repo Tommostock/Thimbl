@@ -109,10 +109,10 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Track recently viewed
-  if (tutorial && typeof window !== 'undefined') {
-    addRecentlyViewed(id);
-  }
+  // Track recently viewed (once on mount)
+  useEffect(() => {
+    if (tutorial) addRecentlyViewed(id);
+  }, [id, tutorial]);
 
   const handleToggleFavorite = useCallback(() => {
     if (!tutorial) return;
@@ -138,24 +138,26 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
   const handleShare = useCallback(async () => {
     if (!tutorial) return;
     try {
+      if (!navigator.share) return; // Web Share API not available
       await navigator.share({
         title: tutorial.title,
         text: `Check out this ${tutorial.category} pattern: ${tutorial.title}`,
         url: window.location.href,
       });
+      // Only award XP if share was completed (not cancelled)
+      const storage = getStorage();
+      setStorage({
+        userStats: {
+          ...storage.userStats,
+          projects_shared: (storage.userStats.projects_shared ?? 0) + 1,
+        },
+      });
+      awardXP(XP_REWARDS.SHARE_PROJECT);
+      showXP(XP_REWARDS.SHARE_PROJECT);
+      checkAchievements();
     } catch {
-      // cancelled
+      // User cancelled or API unavailable — no XP
     }
-    const storage = getStorage();
-    setStorage({
-      userStats: {
-        ...storage.userStats,
-        projects_shared: (storage.userStats.projects_shared ?? 0) + 1,
-      },
-    });
-    awardXP(XP_REWARDS.SHARE_PROJECT);
-    showXP(XP_REWARDS.SHARE_PROJECT);
-    checkAchievements();
   }, [tutorial, checkAchievements, showXP]);
 
   const handleAddNote = useCallback(() => {

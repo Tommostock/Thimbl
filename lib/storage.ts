@@ -94,8 +94,12 @@ export function getStorage(): ThimblStorage {
 /** Save partial updates to storage. Merges with existing data. */
 export function setStorage(updates: Partial<ThimblStorage>): void {
   if (typeof window === 'undefined') return;
-  const current = getStorage();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...updates }));
+  try {
+    const current = getStorage();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...updates }));
+  } catch {
+    // localStorage quota exceeded or unavailable — silently fail
+  }
 }
 
 /** Clear all stored data (sign out / reset). */

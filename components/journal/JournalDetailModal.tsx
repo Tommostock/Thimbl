@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import StarRating from '@/components/ui/StarRating';
@@ -26,6 +26,13 @@ export default function JournalDetailModal({ entry, onClose, onDelete }: Journal
   const [photoIndex, setPhotoIndex] = useState(0);
   const [showConfirm, setShowConfirm] = useState(false);
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
+
+  // Reset state when viewing a different entry
+  useEffect(() => {
+    setPhotoIndex(0);
+    setShowConfirm(false);
+    setLightboxUri(null);
+  }, [entry?.id]);
 
   if (!entry) return null;
 

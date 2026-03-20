@@ -37,7 +37,7 @@ export default function FavoritesPage() {
             Browse patterns and tap the heart to save them here
           </p>
           <Link
-            href="/search"
+            href="/dashboard"
             className="mt-6 px-6 py-3 rounded-xl text-sm font-medium text-white"
             style={{ backgroundColor: 'var(--accent-primary)' }}
           >

@@ -25,13 +25,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // On first render, check localStorage for saved preference
   useEffect(() => {
-    const saved = localStorage.getItem('thimbl-theme') as Theme | null;
-    if (saved) {
-      setTheme(saved);
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      // Respect system preference if no saved preference
-      setTheme('dark');
-    }
+    try {
+      const saved = localStorage.getItem('thimbl-theme') as Theme | null;
+      if (saved) {
+        setTheme(saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        setTheme('dark');
+      }
+    } catch { /* localStorage unavailable */ }
     setMounted(true);
   }, []);
 
@@ -39,7 +40,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!mounted) return;
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('thimbl-theme', theme);
+    try { localStorage.setItem('thimbl-theme', theme); } catch { /* ignore */ }
   }, [theme, mounted]);
 
   const toggleTheme = () => {

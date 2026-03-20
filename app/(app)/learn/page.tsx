@@ -214,6 +214,11 @@ export default function LearnPage() {
         </div>
 
         <div className="space-y-2">
+          {filteredGlossary.length === 0 && (
+            <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>
+              No matching stitches found
+            </p>
+          )}
           {filteredGlossary.map((item) => (
             <div
               key={item.term}

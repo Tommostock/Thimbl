@@ -46,12 +46,14 @@ export default function WelcomeModal() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const seen = localStorage.getItem(WELCOME_KEY);
-    if (!seen) setVisible(true);
+    try {
+      const seen = localStorage.getItem(WELCOME_KEY);
+      if (!seen) setVisible(true);
+    } catch { setVisible(true); }
   }, []);
 
   const dismiss = () => {
-    localStorage.setItem(WELCOME_KEY, 'true');
+    try { localStorage.setItem(WELCOME_KEY, 'true'); } catch { /* ignore */ }
     setVisible(false);
   };
 

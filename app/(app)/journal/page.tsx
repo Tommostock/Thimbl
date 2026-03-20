@@ -22,7 +22,7 @@ function formatShortDate(dateStr: string): string {
 
 export default function JournalPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="px-4 pt-6"><div className="h-8 w-40 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-secondary)' }} /></div>}>
       <JournalPageInner />
     </Suspense>
   );
@@ -129,6 +129,7 @@ function JournalPageInner() {
           style={{ backgroundColor: 'var(--accent-primary)' }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setShowEntryModal(true)}
+          aria-label="Add journal entry"
         >
           <Plus size={24} color="white" />
         </motion.button>

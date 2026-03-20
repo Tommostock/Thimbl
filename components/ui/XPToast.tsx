@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, createContext, useContext, type ReactNode } from 'react';
+import { useState, useCallback, useRef, createContext, useContext, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap } from 'lucide-react';
 
@@ -23,20 +23,19 @@ let toastId = 0;
 
 export function XPToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   const showXP = useCallback((amount: number) => {
     const id = ++toastId;
     setToasts((prev) => [...prev, { id, amount }]);
-  }, []);
 
-  // Auto-remove toasts after 2s
-  useEffect(() => {
-    if (toasts.length === 0) return;
+    // Each toast manages its own 2s removal timer
     const timer = setTimeout(() => {
-      setToasts((prev) => prev.slice(1));
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+      timersRef.current.delete(id);
     }, 2000);
-    return () => clearTimeout(timer);
-  }, [toasts]);
+    timersRef.current.set(id, timer);
+  }, []);
 
   return (
     <XPToastContext.Provider value={{ showXP }}>

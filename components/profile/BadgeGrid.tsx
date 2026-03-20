@@ -63,10 +63,12 @@ function getRequirementText(achievement: Achievement): string {
       return `Maintain a ${count}-day crafting streak`;
     case 'journal_entries':
       return `Log ${count} journal entr${count !== 1 ? 'ies' : 'y'}`;
+    case 'favorites_count':
     case 'favorites':
       return `Add ${count} pattern${count !== 1 ? 's' : ''} to favourites`;
     case 'craft_mode_sessions':
       return `Use Start Crafting mode ${count} time${count !== 1 ? 's' : ''}`;
+    case 'projects_shared':
     case 'share_project':
       return `Share ${count} pattern${count !== 1 ? 's' : ''}`;
     default:
