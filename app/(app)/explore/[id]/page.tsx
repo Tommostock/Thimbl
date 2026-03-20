@@ -12,6 +12,7 @@ import {
   Trash2,
   RefreshCw,
   AlertCircle,
+  BookOpen,
 } from 'lucide-react';
 
 import { getTutorialById } from '@/lib/tutorials';
@@ -292,6 +293,18 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
 
           </div>
         )}
+
+        {/* Log Your Craft button */}
+        <div className="mt-5 mb-5">
+          <button
+            onClick={() => router.push(`/journal?tutorialId=${id}`)}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold text-white"
+            style={{ backgroundColor: 'var(--accent-primary)' }}
+          >
+            <BookOpen size={18} />
+            Log Your Craft
+          </button>
+        </div>
 
         {/* Personal notes */}
         <div className="mt-5 mb-5">

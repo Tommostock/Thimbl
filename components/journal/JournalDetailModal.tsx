@@ -15,6 +15,7 @@ interface JournalDetailModalProps {
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-GB', {
+    weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -24,6 +25,7 @@ function formatDate(dateStr: string): string {
 export default function JournalDetailModal({ entry, onClose, onDelete }: JournalDetailModalProps) {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [lightboxUri, setLightboxUri] = useState<string | null>(null);
 
   if (!entry) return null;
 
@@ -57,12 +59,12 @@ export default function JournalDetailModal({ entry, onClose, onDelete }: Journal
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <h2
-              className="text-xl font-bold"
+              className="text-xl font-bold flex-1 min-w-0 mr-2"
               style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
             >
               {entry.projectTitle}
             </h2>
-            <button onClick={onClose} style={{ color: 'var(--text-muted)' }}>
+            <button onClick={onClose} className="shrink-0" style={{ color: 'var(--text-muted)' }}>
               <X size={24} />
             </button>
           </div>
@@ -80,7 +82,10 @@ export default function JournalDetailModal({ entry, onClose, onDelete }: Journal
           {/* Photo Gallery */}
           {hasPhotos && (
             <div className="mb-4">
-              <div className="relative rounded-xl overflow-hidden aspect-[4/3]">
+              <div
+                className="relative rounded-xl overflow-hidden aspect-[4/3] cursor-pointer"
+                onClick={() => setLightboxUri(entry.photos[photoIndex])}
+              >
                 <img
                   src={entry.photos[photoIndex]}
                   alt={`Photo ${photoIndex + 1}`}
@@ -90,13 +95,19 @@ export default function JournalDetailModal({ entry, onClose, onDelete }: Journal
                   <>
                     <button
                       className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center"
-                      onClick={() => setPhotoIndex((i) => (i - 1 + entry.photos.length) % entry.photos.length)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPhotoIndex((i) => (i - 1 + entry.photos.length) % entry.photos.length);
+                      }}
                     >
                       <ChevronLeft size={18} color="white" />
                     </button>
                     <button
                       className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center"
-                      onClick={() => setPhotoIndex((i) => (i + 1) % entry.photos.length)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPhotoIndex((i) => (i + 1) % entry.photos.length);
+                      }}
                     >
                       <ChevronRight size={18} color="white" />
                     </button>
@@ -133,7 +144,10 @@ export default function JournalDetailModal({ entry, onClose, onDelete }: Journal
               <h3 className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Notes
               </h3>
-              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-sm whitespace-pre-wrap p-3 rounded-xl"
+                style={{ color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)' }}
+              >
                 {entry.notes}
               </p>
             </div>
@@ -169,6 +183,30 @@ export default function JournalDetailModal({ entry, onClose, onDelete }: Journal
           )}
         </motion.div>
       </motion.div>
+
+      {/* Lightbox — full-screen photo viewer */}
+      {lightboxUri && (
+        <motion.div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setLightboxUri(null)}
+        >
+          <button
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center z-10"
+            onClick={() => setLightboxUri(null)}
+          >
+            <X size={20} color="white" />
+          </button>
+          <img
+            src={lightboxUri}
+            alt="Full-screen photo"
+            className="max-w-full max-h-full object-contain p-4"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 }

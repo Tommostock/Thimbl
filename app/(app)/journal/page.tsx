@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { BookOpen, Plus } from 'lucide-react';
+import { useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, Plus, Camera } from 'lucide-react';
 import { useJournal } from '@/hooks/useJournal';
-import { CATEGORIES } from '@/lib/constants';
-import { PROJECTS } from '@/lib/data';
+import { getTutorialById } from '@/lib/tutorials';
+import { awardXP } from '@/lib/xp';
+import { XP_REWARDS } from '@/lib/constants';
+import { useAchievements } from '@/hooks/useAchievements';
 import JournalEntryModal from '@/components/journal/JournalEntryModal';
 import JournalDetailModal from '@/components/journal/JournalDetailModal';
 import StarRating from '@/components/ui/StarRating';
@@ -16,22 +19,30 @@ function formatShortDate(dateStr: string): string {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-function getCategoryEmoji(category: string): string {
-  return CATEGORIES.find((c) => c.key === category)?.emoji ?? '🧵';
+export default function JournalPage() {
+  return (
+    <Suspense>
+      <JournalPageInner />
+    </Suspense>
+  );
 }
 
-// Map of project category colours for placeholders
-const CATEGORY_COLOURS: Record<string, string> = {
-  sewing: '#D4A843',
-  knitting: '#C67B5C',
-  crochet: '#8BA888',
-  embroidery: '#9B7DB8',
-};
-
-export default function JournalPage() {
+function JournalPageInner() {
   const { entries, addEntry, removeEntry, stats } = useJournal();
-  const [showEntryModal, setShowEntryModal] = useState(false);
+  const { checkAchievements } = useAchievements();
+  const searchParams = useSearchParams();
+  const preSelectedId = searchParams.get('tutorialId');
+
+  const [showEntryModal, setShowEntryModal] = useState(!!preSelectedId);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+
+  const handleSave = (entry: JournalEntry) => {
+    addEntry(entry);
+    awardXP(XP_REWARDS.ADD_JOURNAL_ENTRY);
+    if (entry.photos.length > 0) awardXP(XP_REWARDS.UPLOAD_PHOTO);
+    if (entry.rating > 0) awardXP(XP_REWARDS.RATE_PROJECT);
+    checkAchievements();
+  };
 
   return (
     <div className="px-4 pt-6 pb-24">
@@ -46,10 +57,7 @@ export default function JournalPage() {
       {/* Stats Bar */}
       {entries.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div
-            className="rounded-xl p-3 text-center"
-            style={{ backgroundColor: 'var(--bg-secondary)' }}
-          >
+          <div className="rounded-xl p-3 text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
             <div className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
               {stats.totalSessions}
             </div>
@@ -57,21 +65,15 @@ export default function JournalPage() {
               Total Sessions
             </div>
           </div>
-          <div
-            className="rounded-xl p-3 text-center"
-            style={{ backgroundColor: 'var(--bg-secondary)' }}
-          >
+          <div className="rounded-xl p-3 text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
             <div className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
               {stats.uniqueProjects}
             </div>
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Unique Projects
+              Unique Patterns
             </div>
           </div>
-          <div
-            className="rounded-xl p-3 text-center"
-            style={{ backgroundColor: 'var(--bg-secondary)' }}
-          >
+          <div className="rounded-xl p-3 text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
             <div className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
               {stats.avgRating} ⭐
             </div>
@@ -95,6 +97,13 @@ export default function JournalPage() {
           <p className="text-sm mt-2 max-w-xs" style={{ color: 'var(--text-muted)' }}>
             Log your crafting sessions with photos, ratings and notes
           </p>
+          <button
+            className="mt-6 px-6 py-3 rounded-xl text-sm font-semibold text-white"
+            style={{ backgroundColor: 'var(--accent-primary)' }}
+            onClick={() => setShowEntryModal(true)}
+          >
+            Log Your First Craft
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
@@ -110,20 +119,23 @@ export default function JournalPage() {
       )}
 
       {/* FAB */}
-      <motion.button
-        className="fixed bottom-24 right-4 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
-        style={{ backgroundColor: 'var(--accent-primary)' }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setShowEntryModal(true)}
-      >
-        <Plus size={24} color="white" />
-      </motion.button>
+      {entries.length > 0 && (
+        <motion.button
+          className="fixed bottom-24 right-4 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
+          style={{ backgroundColor: 'var(--accent-primary)' }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setShowEntryModal(true)}
+        >
+          <Plus size={24} color="white" />
+        </motion.button>
+      )}
 
       {/* Modals */}
       <JournalEntryModal
         isOpen={showEntryModal}
         onClose={() => setShowEntryModal(false)}
-        onSave={addEntry}
+        onSave={handleSave}
+        preSelectedTutorialId={preSelectedId}
       />
       <JournalDetailModal
         entry={selectedEntry}
@@ -147,11 +159,10 @@ function JournalCard({
   onClick: () => void;
 }) {
   const hasPhoto = entry.photos.length > 0;
-  // Find project to get category for placeholder
-  const project = PROJECTS.find((p) => p.id === entry.projectId);
-  const category = project?.category ?? 'sewing';
-  const emoji = getCategoryEmoji(category);
-  const placeholderColour = CATEGORY_COLOURS[category] ?? '#8BA888';
+  const tutorial = getTutorialById(entry.projectId);
+  // Use the first user photo, or fall back to the tutorial image
+  const displayImage = hasPhoto ? entry.photos[0] : tutorial?.imageUrl;
+  const photoCount = entry.photos.length;
 
   return (
     <motion.button
@@ -164,18 +175,18 @@ function JournalCard({
     >
       {/* Image area */}
       <div className="relative aspect-[4/3] w-full">
-        {hasPhoto ? (
+        {displayImage ? (
           <img
-            src={entry.photos[0]}
+            src={displayImage}
             alt={entry.projectTitle}
             className="w-full h-full object-cover"
           />
         ) : (
           <div
             className="w-full h-full flex items-center justify-center text-4xl"
-            style={{ backgroundColor: placeholderColour + '30' }}
+            style={{ backgroundColor: 'var(--accent-primary)', opacity: 0.15 }}
           >
-            {emoji}
+            🧵
           </div>
         )}
         {/* Gradient overlay */}
@@ -188,6 +199,14 @@ function JournalCard({
         <p className="absolute bottom-2 left-2 right-2 text-xs font-semibold text-white truncate">
           {entry.projectTitle}
         </p>
+
+        {/* Photo count badge */}
+        {photoCount > 1 && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/50">
+            <Camera size={10} color="white" />
+            <span className="text-[10px] text-white font-medium">{photoCount}</span>
+          </div>
+        )}
       </div>
 
       {/* Info area */}
