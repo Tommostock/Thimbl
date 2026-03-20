@@ -2,8 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
+import { X } from 'lucide-react';
 import type { PatternImage } from '@/lib/types/pattern';
 
 interface PatternImageCarouselProps {
@@ -11,6 +11,8 @@ interface PatternImageCarouselProps {
   fallbackImage: string;
   title: string;
 }
+
+const SWIPE_THRESHOLD = 50;
 
 export default function PatternImageCarousel({
   images,
@@ -28,6 +30,14 @@ export default function PatternImageCarousel({
       setIndex((prev) => (prev + dir + allImages.length) % allImages.length);
     },
     [allImages.length],
+  );
+
+  const handleDragEnd = useCallback(
+    (_e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      if (info.offset.x < -SWIPE_THRESHOLD) navigate(1);
+      else if (info.offset.x > SWIPE_THRESHOLD) navigate(-1);
+    },
+    [navigate],
   );
 
   const openFullscreen = useCallback((i: number) => {
@@ -48,41 +58,24 @@ export default function PatternImageCarousel({
             exit={{ x: direction > 0 ? -300 : 300, opacity: 0 }}
             transition={{ duration: 0.25 }}
             className="absolute inset-0 cursor-pointer"
+            drag={allImages.length > 1 ? 'x' : false}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.3}
+            onDragEnd={handleDragEnd}
             onClick={() => openFullscreen(index)}
           >
             <Image
               src={allImages[index].url}
               alt={allImages[index].alt}
               fill
-              className="object-cover"
+              className="object-cover pointer-events-none"
               sizes="100vw"
               unoptimized
               priority={index === 0}
+              draggable={false}
             />
           </motion.div>
         </AnimatePresence>
-
-        {/* Nav arrows */}
-        {allImages.length > 1 && (
-          <>
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(-1); }}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center z-10"
-              style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff' }}
-              aria-label="Previous image"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(1); }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center z-10"
-              style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff' }}
-              aria-label="Next image"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </>
-        )}
 
         {/* Dots */}
         {allImages.length > 1 && (
@@ -91,20 +84,16 @@ export default function PatternImageCarousel({
               <button
                 key={i}
                 onClick={(e) => { e.stopPropagation(); setDirection(i > index ? 1 : -1); setIndex(i); }}
-                className="w-2 h-2 rounded-full transition-colors"
-                style={{ backgroundColor: i === index ? '#fff' : 'rgba(255,255,255,0.5)' }}
+                className="w-2 h-2 rounded-full transition-all duration-200"
+                style={{
+                  backgroundColor: i === index ? '#fff' : 'rgba(255,255,255,0.5)',
+                  width: i === index ? 16 : 8,
+                }}
                 aria-label={`Go to image ${i + 1}`}
               />
             ))}
           </div>
         )}
-
-        {/* Tap to view hint */}
-        <div className="absolute bottom-3 right-3 z-10 text-[10px] font-medium px-2 py-1 rounded-full"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff' }}
-        >
-          Tap to view full image
-        </div>
       </div>
 
       {/* Fullscreen overlay */}
@@ -133,7 +122,7 @@ export default function PatternImageCarousel({
               </button>
             </div>
 
-            {/* Full image */}
+            {/* Full image — swipeable */}
             <div className="flex-1 relative mx-4 mb-4">
               <AnimatePresence initial={false} custom={direction}>
                 <motion.div
@@ -144,39 +133,22 @@ export default function PatternImageCarousel({
                   exit={{ x: direction > 0 ? -300 : 300, opacity: 0 }}
                   transition={{ duration: 0.25 }}
                   className="absolute inset-0"
+                  drag={allImages.length > 1 ? 'x' : false}
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.3}
+                  onDragEnd={handleDragEnd}
                 >
                   <Image
                     src={allImages[index].url}
                     alt={allImages[index].alt}
                     fill
-                    className="object-contain"
+                    className="object-contain pointer-events-none"
                     sizes="100vw"
                     unoptimized
+                    draggable={false}
                   />
                 </motion.div>
               </AnimatePresence>
-
-              {/* Fullscreen nav arrows */}
-              {allImages.length > 1 && (
-                <>
-                  <button
-                    onClick={() => navigate(-1)}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center z-10 min-h-[44px] min-w-[44px]"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff' }}
-                    aria-label="Previous image"
-                  >
-                    <ChevronLeft size={24} />
-                  </button>
-                  <button
-                    onClick={() => navigate(1)}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center z-10 min-h-[44px] min-w-[44px]"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff' }}
-                    aria-label="Next image"
-                  >
-                    <ChevronRight size={24} />
-                  </button>
-                </>
-              )}
             </div>
 
             {/* Fullscreen dots */}
@@ -186,8 +158,11 @@ export default function PatternImageCarousel({
                   <button
                     key={i}
                     onClick={() => { setDirection(i > index ? 1 : -1); setIndex(i); }}
-                    className="w-2.5 h-2.5 rounded-full transition-colors"
-                    style={{ backgroundColor: i === index ? '#fff' : 'rgba(255,255,255,0.35)' }}
+                    className="w-2.5 h-2.5 rounded-full transition-all duration-200"
+                    style={{
+                      backgroundColor: i === index ? '#fff' : 'rgba(255,255,255,0.35)',
+                      width: i === index ? 20 : 10,
+                    }}
                     aria-label={`Go to image ${i + 1}`}
                   />
                 ))}

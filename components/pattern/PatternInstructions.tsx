@@ -10,8 +10,6 @@ import {
   TrendingDown,
   Check,
   X,
-  ChevronLeft,
-  ChevronRight,
   Scissors,
 } from 'lucide-react';
 import type { PatternSection } from '@/lib/types/pattern';
@@ -303,7 +301,7 @@ export default function PatternInstructions({ sections, patternId }: PatternInst
         </div>
       </div>
 
-      {/* ---- Craft Mode (full-screen step-by-step) ---- */}
+      {/* ---- Craft Mode (full-screen step-by-step, swipeable) ---- */}
       <AnimatePresence>
         {craftMode && allCraftSteps.length > 0 && (
           <motion.div
@@ -344,9 +342,33 @@ export default function PatternInstructions({ sections, patternId }: PatternInst
               />
             </div>
 
-            {/* Step content */}
-            <div className="flex-1 flex items-center justify-center p-6 overflow-auto">
-              <div className="max-w-md w-full text-center">
+            {/* Swipeable step content */}
+            <motion.div
+              key={craftFlatIdx}
+              className="flex-1 flex items-center justify-center p-6 overflow-auto"
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.3}
+              onDragEnd={(_e, info) => {
+                if (info.offset.x < -50 && craftFlatIdx + 1 < allCraftSteps.length) {
+                  // Auto-check current step on swipe forward
+                  const step = allCraftSteps[craftFlatIdx]?.step;
+                  if (step && !checkedSteps.has(step.id)) toggleCheck(step.id);
+                  craftNext();
+                } else if (info.offset.x > 50 && craftFlatIdx > 0) {
+                  craftPrev();
+                } else if (info.offset.x < -50 && craftFlatIdx + 1 >= allCraftSteps.length) {
+                  // Last step — swipe to finish
+                  const step = allCraftSteps[craftFlatIdx]?.step;
+                  if (step && !checkedSteps.has(step.id)) toggleCheck(step.id);
+                  setCraftMode(false);
+                }
+              }}
+              initial={{ x: 200, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="max-w-md w-full text-center select-none">
                 {allCraftSteps[craftFlatIdx]?.step.stepNumber && (
                   <span
                     className="inline-block text-sm font-bold px-4 py-1.5 rounded-full mb-4"
@@ -395,58 +417,13 @@ export default function PatternInstructions({ sections, patternId }: PatternInst
                   </p>
                 )}
               </div>
-            </div>
+            </motion.div>
 
-            {/* Navigation */}
-            <div className="flex items-center justify-between p-4 shrink-0" style={{ borderTop: '1px solid var(--border-colour)' }}>
-              <button
-                onClick={craftPrev}
-                disabled={craftFlatIdx === 0}
-                className="flex items-center gap-1 text-sm font-medium px-4 py-3 rounded-xl min-h-[44px] disabled:opacity-30"
-                style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-              >
-                <ChevronLeft size={16} /> Previous
-              </button>
-
-              <button
-                onClick={() => {
-                  const step = allCraftSteps[craftFlatIdx]?.step;
-                  if (step) toggleCheck(step.id);
-                }}
-                className="w-12 h-12 rounded-full flex items-center justify-center min-h-[44px] min-w-[44px]"
-                style={{
-                  backgroundColor: allCraftSteps[craftFlatIdx] && checkedSteps.has(allCraftSteps[craftFlatIdx].step.id)
-                    ? '#22C55E'
-                    : 'var(--bg-secondary)',
-                  color: allCraftSteps[craftFlatIdx] && checkedSteps.has(allCraftSteps[craftFlatIdx].step.id)
-                    ? '#fff'
-                    : 'var(--text-muted)',
-                  border: '2px solid var(--border-colour)',
-                }}
-                aria-label="Mark step complete"
-              >
-                <Check size={20} />
-              </button>
-
-              <button
-                onClick={() => {
-                  const step = allCraftSteps[craftFlatIdx]?.step;
-                  if (step && !checkedSteps.has(step.id)) toggleCheck(step.id);
-                  if (craftFlatIdx + 1 < allCraftSteps.length) {
-                    craftNext();
-                  } else {
-                    setCraftMode(false);
-                  }
-                }}
-                className="flex items-center gap-1 text-sm font-semibold px-4 py-3 rounded-xl min-h-[44px]"
-                style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
-              >
-                {craftFlatIdx + 1 < allCraftSteps.length ? (
-                  <>Next <ChevronRight size={16} /></>
-                ) : (
-                  'Finish'
-                )}
-              </button>
+            {/* Swipe hint */}
+            <div className="pb-8 pt-2 text-center shrink-0">
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Swipe left for next step &middot; Swipe right to go back
+              </p>
             </div>
           </motion.div>
         )}
