@@ -31,6 +31,49 @@ const iconMap: Record<string, typeof Award> = {
   award: Award,
 };
 
+/** Human-readable requirement text for each achievement criteria type */
+function getRequirementText(achievement: Achievement): string {
+  const { criteria } = achievement;
+  const count = criteria.count ?? 1;
+
+  switch (criteria.type) {
+    case 'projects_started':
+      return `Start ${count} project${count !== 1 ? 's' : ''}`;
+    case 'projects_completed':
+      return `Complete ${count} project${count !== 1 ? 's' : ''}`;
+    case 'category_completed':
+      return `Complete ${count} ${criteria.category ?? ''} project${count !== 1 ? 's' : ''}`;
+    case 'photos_uploaded':
+      return `Upload ${count} photo${count !== 1 ? 's' : ''}`;
+    case 'five_star_rating':
+      return `Give ${count} project${count !== 1 ? 's' : ''} a 5-star rating`;
+    case 'night_crafting':
+      return 'Log a craft session after 10pm';
+    case 'hours_logged':
+      return `Log ${count}+ hours of crafting`;
+    case 'materials_complete':
+      return `Check off all materials for ${count} project${count !== 1 ? 's' : ''}`;
+    case 'fast_completion':
+      return `Complete a project in under ${criteria.days ?? 7} days`;
+    case 'category_all_complete':
+      return 'Complete every project in one category';
+    case 'all_categories':
+      return 'Complete a project in each category';
+    case 'streak':
+      return `Maintain a ${count}-day crafting streak`;
+    case 'journal_entries':
+      return `Log ${count} journal entr${count !== 1 ? 'ies' : 'y'}`;
+    case 'favorites':
+      return `Add ${count} pattern${count !== 1 ? 's' : ''} to favourites`;
+    case 'craft_mode_sessions':
+      return `Use Start Crafting mode ${count} time${count !== 1 ? 's' : ''}`;
+    case 'share_project':
+      return `Share ${count} pattern${count !== 1 ? 's' : ''}`;
+    default:
+      return achievement.description ?? '';
+  }
+}
+
 interface BadgeGridProps {
   achievements: Achievement[];
   unlockedIds: string[];
@@ -44,18 +87,17 @@ export default function BadgeGrid({ achievements, unlockedIds }: BadgeGridProps)
       {achievements.map((achievement, index) => {
         const isUnlocked = unlockedSet.has(achievement.id);
         const Icon = iconMap[achievement.icon ?? ''] ?? Award;
+        const requirement = getRequirementText(achievement);
 
         return (
           <motion.div
             key={achievement.id}
-            className="relative aspect-square rounded-xl flex flex-col items-center justify-center p-3 text-center"
+            className="relative rounded-xl flex flex-col items-center justify-center p-3 text-center"
             style={{
               backgroundColor: 'var(--bg-secondary)',
               opacity: isUnlocked ? 1 : 0.5,
               ...(isUnlocked
-                ? {
-                    boxShadow: '0 0 8px var(--accent-primary)',
-                  }
+                ? { boxShadow: '0 0 8px var(--accent-primary)' }
                 : {}),
             }}
             initial={{ opacity: 0, scale: 0.9 }}
@@ -78,22 +120,28 @@ export default function BadgeGrid({ achievements, unlockedIds }: BadgeGridProps)
             }}
           >
             {isUnlocked ? (
-              <Icon size={24} style={{ color: 'var(--accent-primary)' }} />
+              <Icon size={22} style={{ color: 'var(--accent-primary)' }} />
             ) : (
               <div className="relative">
-                <Icon size={24} style={{ color: 'var(--text-muted)' }} />
+                <Icon size={22} style={{ color: 'var(--text-muted)' }} />
                 <Lock
-                  size={12}
+                  size={10}
                   className="absolute -bottom-1 -right-1"
                   style={{ color: 'var(--text-muted)' }}
                 />
               </div>
             )}
             <span
-              className="text-xs font-medium mt-1 leading-tight line-clamp-2"
+              className="text-xs font-semibold mt-1.5 leading-tight line-clamp-2"
               style={{ color: isUnlocked ? 'var(--text-primary)' : 'var(--text-muted)' }}
             >
               {achievement.name}
+            </span>
+            <span
+              className="text-[9px] mt-1 leading-tight line-clamp-2"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              {requirement}
             </span>
           </motion.div>
         );

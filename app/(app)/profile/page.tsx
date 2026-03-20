@@ -2,21 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Moon, BookOpen, Layers, Star, Award } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
+import { BookOpen, Layers, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStorage } from '@/lib/storage';
 import { getLevelForXP, CATEGORIES } from '@/lib/constants';
 import { ACHIEVEMENTS } from '@/lib/data';
-import { computeSkillStats, type SkillStats, BADGE_TIERS } from '@/lib/skills';
+import { computeSkillStats, type SkillStats } from '@/lib/skills';
 import type { StoredStats, StoredProfile } from '@/lib/storage';
 import type { JournalEntry } from '@/lib/types/database';
 import SectionHeader from '@/components/home/SectionHeader';
 import BadgeGrid from '@/components/profile/BadgeGrid';
 
 export default function ProfilePage() {
-  const { theme, toggleTheme } = useTheme();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState<StoredStats | null>(null);
   const [profile, setProfile] = useState<StoredProfile | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -45,12 +43,6 @@ export default function ProfilePage() {
     (c) => c.key === (profile?.favourite_category ?? user?.favourite_category),
   );
 
-  const handleReset = () => {
-    if (window.confirm('Are you sure you want to reset all your progress? This cannot be undone.')) {
-      signOut();
-    }
-  };
-
   return (
     <div className="px-4 pt-6 pb-24">
       {/* Page title */}
@@ -63,32 +55,23 @@ export default function ProfilePage() {
         </h1>
       </motion.div>
 
-      {/* 1. About card */}
+      {/* 1. Name */}
       <motion.div
-        className="rounded-xl p-4 mb-6 flex items-center gap-4"
-        style={{ backgroundColor: 'var(--bg-secondary)' }}
+        className="mb-6"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div
-          className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-white shrink-0"
-          style={{ backgroundColor: 'var(--accent-primary)' }}
+        <h2
+          className="text-lg font-bold"
+          style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
         >
-          {(user?.display_name ?? 'C')[0].toUpperCase()}
-        </div>
-        <div>
-          <h2
-            className="text-lg font-bold"
-            style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
-          >
-            {user?.display_name ?? 'Crafter'}
-          </h2>
-          {favouriteCategory && (
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {favouriteCategory.emoji} {favouriteCategory.label}
-            </p>
-          )}
-        </div>
+          Nanny Joe-Joe
+        </h2>
+        {favouriteCategory && (
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            {favouriteCategory.emoji} {favouriteCategory.label}
+          </p>
+        )}
       </motion.div>
 
       {/* 2. Crafter Level card */}
@@ -303,48 +286,6 @@ export default function ProfilePage() {
         <BadgeGrid achievements={ACHIEVEMENTS} unlockedIds={unlockedIds} />
       </motion.div>
 
-      {/* 8. Settings */}
-      <motion.div
-        className="rounded-xl overflow-hidden"
-        style={{ backgroundColor: 'var(--bg-secondary)' }}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
-      >
-        {/* Dark mode toggle */}
-        <button
-          onClick={toggleTheme}
-          className="w-full flex items-center justify-between p-4"
-          style={{ borderBottom: '1px solid var(--border-colour)' }}
-        >
-          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            Dark Mode
-          </span>
-          <div
-            className="w-10 h-6 rounded-full flex items-center px-1 transition-colors"
-            style={{
-              backgroundColor: theme === 'dark' ? 'var(--accent-primary)' : 'var(--border-colour)',
-            }}
-          >
-            <motion.div
-              className="w-4 h-4 rounded-full bg-white flex items-center justify-center"
-              animate={{ x: theme === 'dark' ? 16 : 0 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            >
-              {theme === 'dark' ? (
-                <Moon size={10} className="text-gray-600" />
-              ) : (
-                <Sun size={10} className="text-yellow-500" />
-              )}
-            </motion.div>
-          </div>
-        </button>
-
-        {/* Reset button */}
-        <button onClick={handleReset} className="w-full p-4 text-left">
-          <span className="text-sm font-medium text-red-500">Reset & Start Over</span>
-        </button>
-      </motion.div>
     </div>
   );
 }
