@@ -2,20 +2,19 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Search, Heart, BookOpen, User } from 'lucide-react';
+import { Home, Heart, BookOpen, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 /**
  * Bottom Navigation Bar
  *
  * Fixed to the bottom of the screen on mobile.
- * Five tabs: Home, Search, Favorites, Journal, Profile.
+ * Four tabs: Home, Favourites, Journal, Profile.
  * Minimum 44px tap targets for accessibility.
  */
 
 const navItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
-  { href: '/search', label: 'Search', icon: Search },
   { href: '/favorites', label: 'Favourites', icon: Heart },
   { href: '/journal', label: 'Journal', icon: BookOpen },
   { href: '/profile', label: 'Profile', icon: User },
@@ -37,7 +36,6 @@ export default function BottomNav() {
       {/* Safe area padding for iPhones with home indicator */}
       <div className="flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom)]">
         {navItems.map((item) => {
-          // Check if the current path matches this nav item
           const isActive =
             item.href === '/'
               ? pathname === '/'
