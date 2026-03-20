@@ -15,7 +15,21 @@ const craftBadgeColour: Record<string, string> = {
   crochet: '#D4A0A0',
 };
 
+// Difficulty heuristic based on subcategory
+function getDifficulty(sub: string): { label: string; colour: string } {
+  const lower = sub.toLowerCase();
+  if (['scarves', 'hats', 'baby', 'toys', 'christmas'].some((s) => lower.includes(s))) {
+    return { label: 'Beginner', colour: '#8BA888' };
+  }
+  if (['sweaters', 'cardigans', "men's"].some((s) => lower.includes(s))) {
+    return { label: 'Advanced', colour: '#C67B5C' };
+  }
+  return { label: 'Intermediate', colour: '#D4A843' };
+}
+
 export default function TutorialCard({ tutorial, index = 0 }: TutorialCardProps) {
+  const difficulty = getDifficulty(tutorial.subcategory);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -43,6 +57,13 @@ export default function TutorialCard({ tutorial, index = 0 }: TutorialCardProps)
               }}
             >
               {tutorial.category === 'knitting' ? '🧶' : '🪝'} {tutorial.category}
+            </span>
+            {/* Difficulty badge */}
+            <span
+              className="absolute bottom-2 left-2 text-[9px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: difficulty.colour, color: '#fff' }}
+            >
+              {difficulty.label}
             </span>
             {/* Subcategory badge */}
             <span

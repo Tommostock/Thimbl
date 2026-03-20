@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import ServiceWorkerRegistration from '@/components/layout/ServiceWorkerRegistration';
 import OfflineBanner from '@/components/layout/OfflineBanner';
+import { XPToastProvider } from '@/components/ui/XPToast';
 import './globals.css';
 
 /**
@@ -79,9 +80,11 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <AuthProvider>
-            <OfflineBanner />
-            {children}
-            <ServiceWorkerRegistration />
+            <XPToastProvider>
+              <OfflineBanner />
+              {children}
+              <ServiceWorkerRegistration />
+            </XPToastProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

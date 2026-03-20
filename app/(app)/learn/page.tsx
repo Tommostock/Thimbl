@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, BookOpen, ArrowLeftRight, Ruler } from 'lucide-react';
+import { ChevronDown, BookOpen, ArrowLeftRight, Ruler, Search } from 'lucide-react';
 
 // ── Expanded Stitch Glossary ──
 
@@ -159,11 +159,16 @@ const CRAFT_FILTERS = [
 
 export default function LearnPage() {
   const [glossaryFilter, setGlossaryFilter] = useState('all');
+  const [glossarySearch, setGlossarySearch] = useState('');
 
-  const filteredGlossary =
-    glossaryFilter === 'all'
-      ? GLOSSARY
-      : GLOSSARY.filter((g) => g.craft === glossaryFilter || g.craft === 'both');
+  const filteredGlossary = GLOSSARY.filter((g) => {
+    const matchesCraft = glossaryFilter === 'all' || g.craft === glossaryFilter || g.craft === 'both';
+    const matchesSearch = !glossarySearch.trim() ||
+      g.term.toLowerCase().includes(glossarySearch.toLowerCase()) ||
+      g.aka.toLowerCase().includes(glossarySearch.toLowerCase()) ||
+      g.definition.toLowerCase().includes(glossarySearch.toLowerCase());
+    return matchesCraft && matchesSearch;
+  });
 
   return (
     <div className="px-4 pt-6 pb-24">
@@ -176,6 +181,21 @@ export default function LearnPage() {
 
       {/* 1. Stitch Glossary */}
       <CollapsibleSection title="Stitch Glossary" icon={BookOpen} defaultOpen>
+        {/* Search input */}
+        <div
+          className="flex items-center gap-2 rounded-xl px-3 py-2 mb-3"
+          style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-colour)' }}
+        >
+          <Search size={14} style={{ color: 'var(--text-muted)' }} />
+          <input
+            value={glossarySearch}
+            onChange={(e) => setGlossarySearch(e.target.value)}
+            placeholder="Search stitches..."
+            className="flex-1 bg-transparent border-none outline-none text-xs"
+            style={{ color: 'var(--text-primary)' }}
+          />
+        </div>
+
         {/* Filter pills */}
         <div className="flex gap-2 mb-3">
           {CRAFT_FILTERS.map((f) => (

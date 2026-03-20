@@ -9,6 +9,7 @@ import { getTutorialById } from '@/lib/tutorials';
 import { awardXP } from '@/lib/xp';
 import { XP_REWARDS } from '@/lib/constants';
 import { useAchievements } from '@/hooks/useAchievements';
+import { useXPToast } from '@/components/ui/XPToast';
 import JournalEntryModal from '@/components/journal/JournalEntryModal';
 import JournalDetailModal from '@/components/journal/JournalDetailModal';
 import StarRating from '@/components/ui/StarRating';
@@ -30,6 +31,7 @@ export default function JournalPage() {
 function JournalPageInner() {
   const { entries, addEntry, removeEntry, stats } = useJournal();
   const { checkAchievements } = useAchievements();
+  const { showXP } = useXPToast();
   const searchParams = useSearchParams();
   const preSelectedId = searchParams.get('tutorialId');
 
@@ -38,9 +40,11 @@ function JournalPageInner() {
 
   const handleSave = (entry: JournalEntry) => {
     addEntry(entry);
+    let totalXP = XP_REWARDS.ADD_JOURNAL_ENTRY;
     awardXP(XP_REWARDS.ADD_JOURNAL_ENTRY);
-    if (entry.photos.length > 0) awardXP(XP_REWARDS.UPLOAD_PHOTO);
-    if (entry.rating > 0) awardXP(XP_REWARDS.RATE_PROJECT);
+    if (entry.photos.length > 0) { awardXP(XP_REWARDS.UPLOAD_PHOTO); totalXP += XP_REWARDS.UPLOAD_PHOTO; }
+    if (entry.rating > 0) { awardXP(XP_REWARDS.RATE_PROJECT); totalXP += XP_REWARDS.RATE_PROJECT; }
+    showXP(totalXP);
     checkAchievements();
   };
 
@@ -121,7 +125,7 @@ function JournalPageInner() {
       {/* FAB */}
       {entries.length > 0 && (
         <motion.button
-          className="fixed bottom-24 right-4 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
+          className="fixed bottom-[90px] right-4 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
           style={{ backgroundColor: 'var(--accent-primary)' }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setShowEntryModal(true)}
@@ -199,6 +203,19 @@ function JournalCard({
         <p className="absolute bottom-2 left-2 right-2 text-xs font-semibold text-white truncate">
           {entry.projectTitle}
         </p>
+
+        {/* Craft type badge */}
+        {tutorial && (
+          <span
+            className="absolute top-2 left-2 text-[9px] font-medium px-2 py-0.5 rounded-full"
+            style={{
+              backgroundColor: tutorial.category === 'knitting' ? '#8BA888' : '#D4A0A0',
+              color: '#fff',
+            }}
+          >
+            {tutorial.category === 'knitting' ? '🧶' : '🪝'} {tutorial.category}
+          </span>
+        )}
 
         {/* Photo count badge */}
         {photoCount > 1 && (

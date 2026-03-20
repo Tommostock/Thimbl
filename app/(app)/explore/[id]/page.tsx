@@ -30,6 +30,7 @@ import {
 import { awardXP } from '@/lib/xp';
 import { XP_REWARDS } from '@/lib/constants';
 import { useAchievements } from '@/hooks/useAchievements';
+import { useXPToast } from '@/components/ui/XPToast';
 
 import PatternImageCarousel from '@/components/pattern/PatternImageCarousel';
 import PatternSkeleton from '@/components/pattern/PatternSkeleton';
@@ -50,6 +51,7 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
   const router = useRouter();
   const { toggleFavorite, isFavorite } = useFavorites();
   const { checkAchievements } = useAchievements();
+  const { showXP } = useXPToast();
 
   const tutorial = getTutorialById(id);
   const { content, loading, error, retry } = usePatternContent(id);
@@ -128,6 +130,7 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
     toggleFavorite(id, meta);
     if (!isFavorite(id)) {
       awardXP(XP_REWARDS.ADD_FAVORITE);
+      showXP(XP_REWARDS.ADD_FAVORITE);
     }
     setTimeout(() => setHeartAnimating(false), 400);
   }, [id, tutorial, toggleFavorite, isFavorite]);
@@ -151,8 +154,9 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
       },
     });
     awardXP(XP_REWARDS.SHARE_PROJECT);
+    showXP(XP_REWARDS.SHARE_PROJECT);
     checkAchievements();
-  }, [tutorial, checkAchievements]);
+  }, [tutorial, checkAchievements, showXP]);
 
   const handleAddNote = useCallback(() => {
     if (!noteText.trim()) return;
