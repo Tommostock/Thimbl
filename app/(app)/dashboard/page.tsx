@@ -8,6 +8,7 @@ import { TUTORIALS, SUBCATEGORIES, getTutorialsByCategory, getTutorialsBySubcate
 import SectionHeader from '@/components/home/SectionHeader';
 import TutorialCardSmall from '@/components/home/TutorialCardSmall';
 import TutorialCard from '@/components/catalogue/TutorialCard';
+import ThimbleLogo from '@/components/ui/ThimbleLogo';
 
 export default function DashboardPage() {
   const { theme, toggleTheme } = useTheme();
@@ -28,12 +29,15 @@ export default function DashboardPage() {
     <div className="px-4 pt-6 pb-24">
       {/* Logo bar */}
       <div className="flex items-center justify-between mb-6">
-        <h1
-          className="text-2xl font-bold"
-          style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
-        >
-          Thimbl
-        </h1>
+        <div className="flex items-center gap-2">
+          <ThimbleLogo size={30} />
+          <h1
+            className="text-2xl font-bold"
+            style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
+          >
+            Thimbl
+          </h1>
+        </div>
         <button
           onClick={toggleTheme}
           className="p-3 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"
