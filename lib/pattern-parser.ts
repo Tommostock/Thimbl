@@ -116,10 +116,44 @@ function extractGauge(text: string): { description: string } | null {
     /\n(?:KNITTING TENSION|CROCHET TENSION)[:\s]*\n([\s\S]*?)(?=\n\s*(?:REMEMBER|PATTERN|EXPLANATION|\n\n))/i,
   );
   if (!gaugeMatch) return null;
-  const desc = gaugeMatch[1].trim();
+  const raw = gaugeMatch[1].trim();
+  if (raw.length < 5) return null;
+
+  // Take only the first meaningful line (the actual gauge), strip notes and bleeding headings
+  const lines = raw.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+  const cleanLines: string[] = [];
+  for (const line of lines) {
+    // Stop at NOTE:, section headings (ALL CAPS), or unrelated content
+    if (/^NOTE:/i.test(line)) break;
+    if (/^[A-Z][A-Z\s-]{2,}:?\s*$/.test(line) && !/stitch|cm|mm|row|needle/i.test(line)) break;
+    cleanLines.push(line);
+    if (cleanLines.length >= 2) break; // Gauge is usually 1-2 lines max
+  }
+
+  const desc = cleanLines.join(' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
   if (desc.length < 5) return null;
-  const lines = desc.split('\n').filter((l) => l.trim().length > 0);
-  return { description: lines.slice(0, 3).join('\n') };
+  return { description: desc };
+}
+
+function cleanMaterialDetails(details: string): string {
+  return details
+    // Strip "(belongs to yarn group X)"
+    .replace(/\(belongs to yarn group [A-Z]\)/gi, '')
+    // Strip "from Garnstudio"
+    .replace(/from Garnstudio/gi, '')
+    // Strip "And use:" at end
+    .replace(/\band use:\s*$/gi, '')
+    // Clean up colour format: "100-100 g colour 3609, red" → "100-100g in red (colour 3609)"
+    .replace(/(\d[\d-]*)\s*g\s+colou?r\s+(\d+),?\s*(.+)/gi, (_m, qty, code, name) => `${qty}g in ${name.trim()} (colour ${code})`)
+    // Simpler: "colour 03, Sand" → "Sand (colour 03)"
+    .replace(/colou?r\s+(\d+),?\s*(.+)/gi, (_m, code, name) => `${name.trim()} (colour ${code})`)
+    // Clean excessive whitespace
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\n\s*\n/g, '\n')
+    .trim();
 }
 
 function extractMaterials(text: string): PatternMaterial[] {
@@ -131,7 +165,6 @@ function extractMaterials(text: string): PatternMaterial[] {
   if (!yarnMatch) return [];
 
   const block = yarnMatch[1].trim();
-  // Split by lines, group by DROPS yarn mentions
   const lines = block.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
 
   let currentName = '';
@@ -140,9 +173,11 @@ function extractMaterials(text: string): PatternMaterial[] {
   for (const line of lines) {
     const dropsMatch = line.match(/^(DROPS\s+[\w\s-]+)/i);
     if (dropsMatch) {
-      // Save previous
       if (currentName) {
-        materials.push({ yarnName: currentName, details: currentDetails.join('\n') });
+        materials.push({
+          yarnName: currentName,
+          details: cleanMaterialDetails(currentDetails.join('\n')),
+        });
       }
       currentName = dropsMatch[1].trim();
       const rest = line.replace(dropsMatch[0], '').trim();
@@ -151,40 +186,69 @@ function extractMaterials(text: string): PatternMaterial[] {
       currentDetails.push(line);
     }
   }
-  // Save last
   if (currentName) {
-    materials.push({ yarnName: currentName, details: currentDetails.join('\n') });
+    materials.push({
+      yarnName: currentName,
+      details: cleanMaterialDetails(currentDetails.join('\n')),
+    });
   } else if (lines.length > 0) {
-    materials.push({ yarnName: 'Yarn', details: lines.join('\n') });
+    materials.push({ yarnName: 'Yarn', details: cleanMaterialDetails(lines.join('\n')) });
   }
 
   return materials;
 }
 
+function cleanNeedleLine(line: string): string {
+  return line
+    // "DROPS CIRCULAR NEEDLE SIZE 5 mm: Length 40 and 80 cm" → "5mm circular needle (40 & 80cm)"
+    .replace(
+      /DROPS\s+CIRCULAR\s+NEEDLES?\s+SIZE\s+([\d.]+)\s*MM[:\s]*Length[:\s]*([\d\s,andcm]+)/gi,
+      (_m, size, lengths) => {
+        const clean = lengths.replace(/\s+/g, '').replace(/and/g, ' & ').replace(/cm/g, '').trim();
+        return `${size}mm circular needle (${clean}cm)`;
+      },
+    )
+    // "DROPS DOUBLE POINTED NEEDLES SIZE 5 MM" → "5mm double-pointed needles"
+    .replace(
+      /DROPS\s+DOUBLE\s+POINTED\s+NEEDLES?\s+SIZE\s+([\d.]+)\s*MM\.?/gi,
+      (_m, size) => `${size}mm double-pointed needles`,
+    )
+    // "DROPS CABLE NEEDLE" → "Cable needle"
+    .replace(/DROPS\s+CABLE\s+NEEDLE\.?/gi, 'Cable needle')
+    // "DROPS CROCHET HOOK SIZE 4 MM" → "4mm crochet hook"
+    .replace(
+      /DROPS\s+CROCHET\s+HOOKS?\s+SIZE\s+([\d.]+)\s*MM\.?/gi,
+      (_m, size) => `${size}mm crochet hook`,
+    )
+    // Generic "DROPS ... SIZE X MM" fallback
+    .replace(
+      /DROPS\s+([\w\s-]+?)\s+SIZE\s+([\d.]+)\s*MM\.?/gi,
+      (_m, type, size) => `${size}mm ${type.trim().toLowerCase()}`,
+    )
+    .replace(/\.\s*$/, '')
+    .trim();
+}
+
 function extractNeedles(text: string): string[] {
-  // Match NEEDLES: or CROCHET HOOK SIZE at the start of a line (not "Yarn & needles" nav text)
   const needleMatch = text.match(
     /\nNEEDLES?:\s*\n([\s\S]*?)(?=\n\s*(?:KNITTING TENSION|CROCHET TENSION|TENSION|GAUGE|Accessories|\n\n))/i,
   );
+  let lines: string[] = [];
   if (needleMatch) {
-    return needleMatch[1]
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 3 && !l.startsWith('---'));
+    lines = needleMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.length > 3 && !l.startsWith('---'));
+  } else {
+    const hookMatch = text.match(
+      /\nCROCHET HOOK[^:]*:\s*\n?([\s\S]*?)(?=\n\s*(?:KNITTING TENSION|CROCHET TENSION|TENSION|GAUGE|Accessories|\n\n))/i,
+    );
+    if (hookMatch) {
+      lines = hookMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.length > 3 && !l.startsWith('---'));
+    }
   }
 
-  // Try CROCHET HOOK SIZE format
-  const hookMatch = text.match(
-    /\nCROCHET HOOK[^:]*:\s*\n?([\s\S]*?)(?=\n\s*(?:KNITTING TENSION|CROCHET TENSION|TENSION|GAUGE|Accessories|\n\n))/i,
-  );
-  if (hookMatch) {
-    return hookMatch[1]
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 3 && !l.startsWith('---'));
-  }
-
-  return [];
+  return lines
+    .map(cleanNeedleLine)
+    // Filter out "magic loop" advice lines — those aren't tools
+    .filter((l) => !/magic loop/i.test(l) && l.length > 2);
 }
 
 function extractTips(patternText: string): string[] {
