@@ -1,10 +1,11 @@
 import BottomNav from '@/components/layout/BottomNav';
+import WelcomeModal from '@/components/onboarding/WelcomeModal';
 
 /**
  * App Layout
  *
- * Used for all authenticated app pages.
- * Includes the bottom navigation bar.
+ * Used for all app pages.
+ * Includes the bottom navigation bar and first-launch welcome tutorial.
  */
 
 export default function AppLayout({
@@ -18,6 +19,7 @@ export default function AppLayout({
         {children}
       </main>
       <BottomNav />
+      <WelcomeModal />
     </>
   );
 }
