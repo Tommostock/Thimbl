@@ -234,7 +234,7 @@ function extractSections(patternText: string): PatternSection[] {
       if (
         withoutColon.length >= 3 &&
         withoutColon === withoutColon.toUpperCase() &&
-        /^[A-Z][A-Z\s-]*$/.test(withoutColon) &&
+        /^[A-Z][A-Z\s&-]*$/.test(withoutColon) &&
         !withoutColon.startsWith('ROW') &&
         !withoutColon.startsWith('ROUND') &&
         !withoutColon.startsWith('NOTE') &&

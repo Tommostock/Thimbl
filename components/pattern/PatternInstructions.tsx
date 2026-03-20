@@ -61,10 +61,16 @@ export default function PatternInstructions({ sections, patternId }: PatternInst
   const [craftSectionIdx, setCraftSectionIdx] = useState(0);
   const [craftStepIdx, setCraftStepIdx] = useState(0);
 
-  const formatted: FormattedSection[] = useMemo(
-    () => sections.map((s) => formatSection(s.heading, s.content)),
-    [sections],
-  );
+  const formatted: FormattedSection[] = useMemo(() => {
+    // Filter out tips/techniques sections before formatting
+    const tipsPattern =
+      /^(TIPS?\s*(AND|&)\s*TECHNIQUES?|KNITTING TIP|CROCHET TIP|CROCHET INFO|INCREASE TIP|DECREASE TIP|MAGIC CIRCLE|WORK IN THE ROUND|WORKING \d+ DC TOG|EXPLANATION|REMEMBER|TIPS?)$/i;
+    const formattedHeadingPattern = /tips?\s*(&|and)\s*techniques?|magic circle|crochet (tip|info)|knitting tip|explanation/i;
+    return sections
+      .filter((s) => !tipsPattern.test(s.heading.trim()))
+      .map((s) => formatSection(s.heading, s.content))
+      .filter((s) => !formattedHeadingPattern.test(s.heading));
+  }, [sections]);
 
   // Persist checked steps
   useEffect(() => {
