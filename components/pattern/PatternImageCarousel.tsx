@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
 import { X } from 'lucide-react';
@@ -23,6 +23,14 @@ export default function PatternImageCarousel({
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
+
+  // Lock body scroll when fullscreen is open
+  useEffect(() => {
+    if (fullscreen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [fullscreen]);
 
   const navigate = useCallback(
     (dir: number) => {
@@ -104,7 +112,7 @@ export default function PatternImageCarousel({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 flex flex-col"
+            className="fixed inset-0 z-50 flex flex-col overflow-hidden touch-none"
             style={{ backgroundColor: 'rgba(0,0,0,0.95)' }}
           >
             {/* Close + counter */}
