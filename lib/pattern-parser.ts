@@ -258,8 +258,15 @@ function extractSections(patternText: string): PatternSection[] {
     return sections;
   }
 
+  // Headings to exclude — tips, techniques, info blocks
+  const excludePattern =
+    /^(TIPS?\s*(AND|&)\s*TECHNIQUES?|KNITTING TIP|CROCHET TIP|CROCHET INFO|INCREASE TIP|DECREASE TIP|MAGIC CIRCLE|WORK IN THE ROUND|WORKING \d+ DC TOG|EXPLANATION|REMEMBER|TIPS?)$/i;
+
   // Extract content between headings
   for (let i = 0; i < headings.length; i++) {
+    // Skip tips/techniques sections entirely
+    if (excludePattern.test(headings[i].heading.trim())) continue;
+
     const start = headings[i].index + headings[i].heading.length + 1;
     const end = i + 1 < headings.length ? headings[i + 1].index : instructionText.length;
     const content = instructionText.slice(start, end).trim();
@@ -268,7 +275,7 @@ function extractSections(patternText: string): PatternSection[] {
       sections.push({
         heading: headings[i].heading,
         content,
-        order: i,
+        order: sections.length,
       });
     }
   }

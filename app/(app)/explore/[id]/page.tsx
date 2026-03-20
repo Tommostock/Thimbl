@@ -34,7 +34,6 @@ import PatternImageCarousel from '@/components/pattern/PatternImageCarousel';
 import PatternSkeleton from '@/components/pattern/PatternSkeleton';
 import MaterialsList from '@/components/pattern/MaterialsList';
 import PatternInstructions from '@/components/pattern/PatternInstructions';
-import PatternTips from '@/components/pattern/PatternTips';
 import type { ProjectNote } from '@/lib/types/database';
 
 const craftBadgeColour: Record<string, string> = {
@@ -227,21 +226,6 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
           </p>
         </div>
 
-        {/* Tags */}
-        {tutorial.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-5">
-            {tutorial.tags.map((tag) => (
-              <span
-                key={tag}
-                className="text-[10px] px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-muted)' }}
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
-
         {/* Sizes (from parsed content) */}
         {content && content.sizes.length > 0 && (
           <div className="mb-5">
@@ -306,8 +290,6 @@ export default function TutorialDetailPage({ params }: { params: Promise<{ id: s
             {/* Instructions */}
             <PatternInstructions sections={content.sections} patternId={id} />
 
-            {/* Tips */}
-            <PatternTips tips={content.tips} />
           </div>
         )}
 
