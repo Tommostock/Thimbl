@@ -74,7 +74,7 @@ export default function RootLayout({
     <html lang="en" className={`${playfair.variable} ${sourceSans.variable} ${dancingScript.variable} ${greatVibes.variable}`}>
       <head>
         {/* PWA iOS icons */}
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
       </head>
       <body>
         <ThemeProvider>
