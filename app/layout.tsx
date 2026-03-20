@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Playfair_Display, Source_Sans_3, Dancing_Script } from 'next/font/google';
+import { Playfair_Display, Source_Sans_3, Dancing_Script, Great_Vibes } from 'next/font/google';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import ServiceWorkerRegistration from '@/components/layout/ServiceWorkerRegistration';
@@ -34,6 +34,14 @@ const dancingScript = Dancing_Script({
   display: 'swap',
 });
 
+// Calligraphy font — matching BakeBook's "Suzie's" style
+const greatVibes = Great_Vibes({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-calligraphy',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'Thimbl — Level Up Your Craft',
   description:
@@ -63,7 +71,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${sourceSans.variable} ${dancingScript.variable}`}>
+    <html lang="en" className={`${playfair.variable} ${sourceSans.variable} ${dancingScript.variable} ${greatVibes.variable}`}>
       <head>
         {/* PWA iOS icons */}
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />

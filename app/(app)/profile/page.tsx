@@ -62,10 +62,10 @@ export default function ProfilePage() {
         animate={{ opacity: 1, y: 0 }}
       >
         <h2
-          className="text-lg font-bold"
-          style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
+          className="text-3xl"
+          style={{ fontFamily: 'var(--font-calligraphy)', color: 'var(--accent-primary)' }}
         >
-          Nanny Joe-Joe
+          For Nanny Joe-Joe
         </h2>
         {favouriteCategory && (
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
