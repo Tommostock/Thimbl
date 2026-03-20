@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Layers, Star } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { getStorage } from '@/lib/storage';
 import { getLevelForXP, CATEGORIES } from '@/lib/constants';
 import { ACHIEVEMENTS } from '@/lib/achievements';
@@ -14,7 +13,6 @@ import SectionHeader from '@/components/home/SectionHeader';
 import BadgeGrid from '@/components/profile/BadgeGrid';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
   const [stats, setStats] = useState<StoredStats | null>(null);
   const [profile, setProfile] = useState<StoredProfile | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -40,7 +38,7 @@ export default function ProfilePage() {
   const progress = nextLevel ? Math.min((progressXP / neededXP) * 100, 100) : 100;
 
   const favouriteCategory = CATEGORIES.find(
-    (c) => c.key === (profile?.favourite_category ?? user?.favourite_category),
+    (c) => c.key === profile?.favourite_category,
   );
 
   return (

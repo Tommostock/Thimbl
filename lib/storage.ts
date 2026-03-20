@@ -104,11 +104,6 @@ export function clearStorage(): void {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-/** Check whether the user has completed onboarding. */
-export function hasProfile(): boolean {
-  return !!getStorage().profile.display_name;
-}
-
 // -------------------------------------------------------
 // User Projects
 // -------------------------------------------------------

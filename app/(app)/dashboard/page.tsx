@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import { Sun, Moon, Search, SearchX } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -56,6 +57,9 @@ export default function HomePage() {
 
   // Recently viewed (loaded from localStorage on mount)
   const [recentlyViewed, setRecentlyViewed] = useState<CraftTutorial[]>([]);
+  // Active projects — patterns with step progress
+  const [activeProjects, setActiveProjects] = useState<{ tutorial: CraftTutorial; stepsCompleted: number }[]>([]);
+
   useEffect(() => {
     const ids = getRecentlyViewed();
     const tutorials = ids
@@ -63,6 +67,24 @@ export default function HomePage() {
       .filter((t): t is CraftTutorial => t !== undefined)
       .slice(0, 8);
     setRecentlyViewed(tutorials);
+
+    // Load step progress
+    try {
+      const raw = localStorage.getItem('thimbl_step_progress');
+      if (raw) {
+        const progress: Record<string, string[]> = JSON.parse(raw);
+        const projects: { tutorial: CraftTutorial; stepsCompleted: number }[] = [];
+        for (const [patternId, steps] of Object.entries(progress)) {
+          if (steps.length > 0) {
+            const t = getTutorialById(patternId);
+            if (t) projects.push({ tutorial: t, stepsCompleted: steps.length });
+          }
+        }
+        // Sort by most recently active (most steps = likely most recent interaction)
+        projects.sort((a, b) => b.stepsCompleted - a.stepsCompleted);
+        setActiveProjects(projects.slice(0, 6));
+      }
+    } catch { /* ignore */ }
   }, []);
 
   // Discovery carousels (only computed when needed)
@@ -170,6 +192,46 @@ export default function HomePage() {
       {/* Discovery carousels — only when browsing (no search/filters active) */}
       {!isFiltering && (
         <>
+          {/* Active Projects */}
+          {activeProjects.length > 0 && (
+            <div className="mb-6">
+              <SectionHeader title="Active Projects" />
+              <div className="space-y-2">
+                {activeProjects.map(({ tutorial, stepsCompleted }) => (
+                  <Link
+                    key={tutorial.id}
+                    href={`/explore/${tutorial.id}`}
+                    className="flex items-center gap-3 rounded-xl p-3"
+                    style={{ backgroundColor: 'var(--bg-secondary)' }}
+                  >
+                    <img
+                      src={tutorial.imageUrl}
+                      alt={tutorial.title}
+                      className="w-12 h-12 rounded-lg object-cover shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="text-sm font-medium truncate"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
+                        {tutorial.title}
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        {stepsCompleted} step{stepsCompleted !== 1 ? 's' : ''} completed
+                      </p>
+                    </div>
+                    <span
+                      className="text-xs font-semibold px-2.5 py-1 rounded-full shrink-0"
+                      style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
+                    >
+                      Continue
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Recently Viewed */}
           {recentlyViewed.length > 0 && (
             <div className="mb-6">

@@ -1,68 +1,31 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { getStorage, clearStorage, hasProfile } from '@/lib/storage';
+import { createContext, useContext, type ReactNode } from 'react';
+import { clearStorage } from '@/lib/storage';
 
 /**
- * Auth Context
+ * Auth Context (simplified — no onboarding)
  *
- * No Supabase auth — user identity is stored in localStorage.
- * "Logged in" means onboarding has been completed (display_name is set).
- * "Sign out" clears localStorage and redirects to /onboarding.
+ * Provides a signOut function that clears localStorage.
+ * No login or onboarding flow — the app is immediately usable.
  */
 
-interface LocalUser {
-  id: 'local';
-  display_name: string;
-  favourite_category: string;
-}
-
 interface AuthContextType {
-  user: LocalUser | null;
-  loading: boolean;
   signOut: () => void;
-  refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
   signOut: () => {},
-  refreshUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<LocalUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
-
-  const loadUser = () => {
-    const { profile } = getStorage();
-    if (profile.display_name) {
-      setUser({ id: 'local', display_name: profile.display_name, favourite_category: profile.favourite_category });
-    } else {
-      setUser(null);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadUser();
-  }, []);
-
   const signOut = () => {
     clearStorage();
-    setUser(null);
-    router.push('/onboarding');
-  };
-
-  const refreshUser = () => {
-    loadUser();
+    window.location.reload();
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, refreshUser }}>
+    <AuthContext.Provider value={{ signOut }}>
       {children}
     </AuthContext.Provider>
   );
