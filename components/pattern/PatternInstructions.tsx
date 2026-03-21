@@ -9,7 +9,6 @@ import {
   TrendingUp,
   TrendingDown,
   Check,
-  X,
   Scissors,
 } from 'lucide-react';
 import type { PatternSection } from '@/lib/types/pattern';
@@ -55,9 +54,6 @@ export default function PatternInstructions({ sections, patternId }: PatternInst
   );
   const [showGlossary, setShowGlossary] = useState(false);
   const [checkedSteps, setCheckedSteps] = useState<Set<string>>(() => getCheckedSteps(patternId));
-  const [craftMode, setCraftMode] = useState(false);
-  const [craftSectionIdx, setCraftSectionIdx] = useState(0);
-  const [craftStepIdx, setCraftStepIdx] = useState(0);
 
   const formatted: FormattedSection[] = useMemo(() => {
     // Filter out tips/techniques sections before formatting
@@ -93,45 +89,9 @@ export default function PatternInstructions({ sections, patternId }: PatternInst
     });
   };
 
-  // Craft mode navigation
-  const allCraftSteps = useMemo(() => {
-    const result: { section: FormattedSection; step: FormattedStep; sIdx: number; stIdx: number }[] = [];
-    formatted.forEach((section, sIdx) => {
-      section.steps.forEach((step, stIdx) => {
-        result.push({ section, step, sIdx, stIdx });
-      });
-    });
-    return result;
-  }, [formatted]);
-
-  const craftFlatIdx = useMemo(() => {
-    let idx = 0;
-    for (let s = 0; s < craftSectionIdx && s < formatted.length; s++) {
-      idx += formatted[s].steps.length;
-    }
-    return idx + craftStepIdx;
-  }, [craftSectionIdx, craftStepIdx, formatted]);
-
-  const craftNext = useCallback(() => {
-    if (craftFlatIdx + 1 < allCraftSteps.length) {
-      const next = allCraftSteps[craftFlatIdx + 1];
-      setCraftSectionIdx(next.sIdx);
-      setCraftStepIdx(next.stIdx);
-    }
-  }, [craftFlatIdx, allCraftSteps]);
-
-  const craftPrev = useCallback(() => {
-    if (craftFlatIdx - 1 >= 0) {
-      const prev = allCraftSteps[craftFlatIdx - 1];
-      setCraftSectionIdx(prev.sIdx);
-      setCraftStepIdx(prev.stIdx);
-    }
-  }, [craftFlatIdx, allCraftSteps]);
-
   if (sections.length === 0) return null;
 
   return (
-    <>
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2
@@ -141,25 +101,14 @@ export default function PatternInstructions({ sections, patternId }: PatternInst
             <BookOpen size={18} style={{ color: 'var(--accent-secondary)' }} />
             Pattern Instructions
           </h2>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowGlossary(!showGlossary)}
-              className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-lg min-h-[36px]"
-              style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)' }}
-            >
-              <Info size={13} />
-              Stitch Guide
-            </button>
-            {allCraftSteps.length > 0 && (
-              <button
-                onClick={() => setCraftMode(true)}
-                className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg min-h-[36px]"
-                style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
-              >
-                Start Crafting
-              </button>
-            )}
-          </div>
+          <button
+            onClick={() => setShowGlossary(!showGlossary)}
+            className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-lg min-h-[36px]"
+            style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)' }}
+          >
+            <Info size={13} />
+            Stitch Guide
+          </button>
         </div>
 
         {/* Glossary */}
@@ -300,135 +249,6 @@ export default function PatternInstructions({ sections, patternId }: PatternInst
           })}
         </div>
       </div>
-
-      {/* ---- Craft Mode (full-screen step-by-step, swipeable) ---- */}
-      <AnimatePresence>
-        {craftMode && allCraftSteps.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex flex-col"
-            style={{ backgroundColor: 'var(--bg-primary)' }}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 shrink-0" style={{ borderBottom: '1px solid var(--border-colour)' }}>
-              <div>
-                <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                  {allCraftSteps[craftFlatIdx]?.section.heading}
-                </p>
-                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                  Step {craftFlatIdx + 1} of {allCraftSteps.length}
-                </p>
-              </div>
-              <button
-                onClick={() => setCraftMode(false)}
-                className="w-10 h-10 rounded-full flex items-center justify-center min-h-[44px] min-w-[44px]"
-                style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                aria-label="Exit craft mode"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Progress bar */}
-            <div className="h-1 shrink-0" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-              <div
-                className="h-full transition-all duration-300"
-                style={{
-                  backgroundColor: 'var(--accent-primary)',
-                  width: `${((craftFlatIdx + 1) / allCraftSteps.length) * 100}%`,
-                }}
-              />
-            </div>
-
-            {/* Swipeable step content */}
-            <motion.div
-              key={craftFlatIdx}
-              className="flex-1 flex items-center justify-center p-6 overflow-auto"
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.3}
-              onDragEnd={(_e, info) => {
-                if (info.offset.x < -50 && craftFlatIdx + 1 < allCraftSteps.length) {
-                  // Auto-check current step on swipe forward
-                  const step = allCraftSteps[craftFlatIdx]?.step;
-                  if (step && !checkedSteps.has(step.id)) toggleCheck(step.id);
-                  craftNext();
-                } else if (info.offset.x > 50 && craftFlatIdx > 0) {
-                  craftPrev();
-                } else if (info.offset.x < -50 && craftFlatIdx + 1 >= allCraftSteps.length) {
-                  // Last step — swipe to finish
-                  const step = allCraftSteps[craftFlatIdx]?.step;
-                  if (step && !checkedSteps.has(step.id)) toggleCheck(step.id);
-                  setCraftMode(false);
-                }
-              }}
-              initial={{ x: 200, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="max-w-md w-full text-center select-none">
-                {allCraftSteps[craftFlatIdx]?.step.stepNumber && (
-                  <span
-                    className="inline-block text-sm font-bold px-4 py-1.5 rounded-full mb-4"
-                    style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
-                  >
-                    {allCraftSteps[craftFlatIdx].step.stepNumber}
-                  </span>
-                )}
-
-                {allCraftSteps[craftFlatIdx]?.step.shaping && (
-                  <div className="flex justify-center mb-3">
-                    {allCraftSteps[craftFlatIdx].step.shaping === 'increase' ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: 'rgba(59,130,246,0.1)', color: '#3B82F6' }}>
-                        <TrendingUp size={14} /> Increasing
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
-                        <TrendingDown size={14} /> Decreasing
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <p
-                  className="text-lg leading-relaxed font-medium"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  {allCraftSteps[craftFlatIdx]?.step.instruction}
-                </p>
-
-                {allCraftSteps[craftFlatIdx]?.step.stitchCount && (
-                  <div className="mt-4">
-                    <span
-                      className="inline-flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-full"
-                      style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: '#16A34A' }}
-                    >
-                      <Check size={16} />
-                      {allCraftSteps[craftFlatIdx].step.stitchCount}
-                    </span>
-                  </div>
-                )}
-
-                {allCraftSteps[craftFlatIdx]?.step.note && (
-                  <p className="mt-4 text-sm" style={{ color: 'var(--text-muted)' }}>
-                    💡 {allCraftSteps[craftFlatIdx].step.note}
-                  </p>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Swipe hint */}
-            <div className="pb-8 pt-2 text-center shrink-0">
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Swipe left for next step &middot; Swipe right to go back
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
   );
 }
 

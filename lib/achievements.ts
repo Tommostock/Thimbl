@@ -106,15 +106,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     criteria: { type: 'favorites_count', count: 10 },
   },
   {
-    id: 'ach-018',
-    key: 'craft_mode_master',
-    name: 'Craft Mode Master',
-    description: 'Complete 5 craft mode sessions',
-    icon: 'zap',
-    xp_reward: 25,
-    criteria: { type: 'craft_mode_sessions', count: 5 },
-  },
-  {
     id: 'ach-019',
     key: 'social_crafter',
     name: 'Social Crafter',
